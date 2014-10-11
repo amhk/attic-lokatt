@@ -1,0 +1,8 @@
+*.d
+*.o
+*.plist
+/liblokatt.a
+/lokatt
+/test-bar
+/test-foo
+tags
