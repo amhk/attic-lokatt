@@ -1,14 +1,15 @@
 liblokatt_objects :=
-liblokatt_objects += foo.o
+liblokatt_objects += error.o
+liblokatt_objects += ring-buffer.o
 
 binary := lokatt
 
 test_binaries :=
-test_binaries += test-foo
-test_binaries += test-bar
+test_binaries += test-ring-buffer
 
 headers :=
-headers += foo.h
+headers += error.h
+headers += ring-buffer.h
 
 liblokatt = liblokatt.a
 test_objects := $(patsubst %, %.o, $(test_binaries))
