@@ -3,8 +3,9 @@
 
 #include "error.h"
 #include "ring-buffer.h"
+#include "test.h"
 
-static void test_create_iterator_before_insert()
+TEST(create_iterator_before_insert)
 {
 	struct ring_buffer *rb;
 	struct ring_buffer_iterator *iter;
@@ -28,7 +29,7 @@ static void test_create_iterator_before_insert()
 	destroy_ring_buffer(rb);
 }
 
-static void test_mixed_inserts_and_reads()
+TEST(mixed_inserts_and_reads)
 {
 	struct ring_buffer *rb;
 	struct ring_buffer_iterator *iter;
@@ -61,7 +62,7 @@ static void test_mixed_inserts_and_reads()
 
 }
 
-static void test_multiple_iterators_are_independent()
+TEST(multiple_iterators_are_independent)
 {
 	struct ring_buffer *rb;
 	struct ring_buffer_iterator *iter1, *iter2;
@@ -114,7 +115,7 @@ static void test_multiple_iterators_are_independent()
 	destroy_ring_buffer(rb);
 }
 
-static void test_buffer_wraps_around()
+TEST(buffer_wraps_around)
 {
 	struct ring_buffer *rb;
 	struct ring_buffer_iterator *iter;
@@ -147,11 +148,7 @@ static void test_buffer_wraps_around()
 	destroy_ring_buffer(rb);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	test_create_iterator_before_insert();
-	test_mixed_inserts_and_reads();
-	test_multiple_iterators_are_independent();
-	test_buffer_wraps_around();
-	return 0;
+	return test_main(argc, argv);
 }

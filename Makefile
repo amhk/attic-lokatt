@@ -10,9 +10,10 @@ test_binaries += test-ring-buffer
 headers :=
 headers += error.h
 headers += ring-buffer.h
+headers += test.h
 
 liblokatt = liblokatt.a
-test_objects := $(patsubst %, %.o, $(test_binaries))
+test_objects := $(patsubst %, %.o, $(test_binaries)) test.o
 objects := $(binary).o $(liblokatt_objects) $(test_objects)
 deps := $(objects:.o=.d)
 sources := $(objects:.o=.c) $(headers)
@@ -45,7 +46,7 @@ endif
 %.plist: %.c
 	$(QUIET_ANALYZE)$(CC) $(CFLAGS) --analyze -o $@ $<
 
-test-%: test-%.o $(LIBS)
+test-%: test-%.o test.o $(LIBS)
 	$(QUIET_LD)$(LD) $(LDFLAGS) -o $@ $^
 
 all: $(tags) $(binary) $(test_binaries)
@@ -60,6 +61,9 @@ analyze: $(plists)
 
 $(tags): $(sources)
 	$(QUIET_TAGS)ctags --fields=+l $(sources)
+
+test: $(test_binaries)
+	@for binary in $(test_binaries); do ./$${binary}; done
 
 clean:
 	$(RM) $(deps)
