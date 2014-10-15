@@ -1,4 +1,5 @@
 liblokatt_objects :=
+liblokatt_objects += demux.o
 liblokatt_objects += error.o
 liblokatt_objects += ring-buffer.o
 
@@ -9,6 +10,7 @@ test_binaries += test-ring-buffer
 
 headers :=
 headers += error.h
+headers += lokatt.h
 headers += ring-buffer.h
 headers += test.h
 
