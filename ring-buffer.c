@@ -55,7 +55,7 @@ void destroy_ring_buffer(struct ring_buffer *rb)
 	free(rb);
 }
 
-int write_ring_buffer(struct ring_buffer *rb, void *data, size_t size)
+int write_ring_buffer(struct ring_buffer *rb, const void *data, size_t size)
 {
 	static const char S = sizeof(struct entry);
 	const size_t required_space = S + size;
