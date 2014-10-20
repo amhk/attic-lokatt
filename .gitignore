@@ -3,5 +3,6 @@
 *.plist
 /liblokatt.a
 /lokatt
+/test-logcat
 /test-ring-buffer
 tags
