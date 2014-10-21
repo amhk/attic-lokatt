@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "logcat.h"
 #include "lokatt.h"
 #include "ring-buffer.h"
 
@@ -17,6 +18,7 @@ static int read_ctl(int fd);
 static void write_ctl(int fd, int value);
 static void write_session(struct lokatt_session *s, const char *buf,
 			  size_t size);
+static int read_adb_output(struct lokatt_session *s, int fd);
 
 struct lokatt_session {
 	/* access to members 'rb' and 'is_active' is guarded by 'lock' */
@@ -100,9 +102,7 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 		}
 
 		/* anything new in the ring buffer? */
-		memset(m->text, 0, sizeof(m->text));
-		status = read_ring_buffer_iterator(c->iter, m->text,
-						   sizeof(m->text));
+		status = read_ring_buffer_iterator(c->iter, m, sizeof(*m));
 		if (status >= 0) {
 			retval = 0;
 			break;
@@ -115,6 +115,7 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 		pthread_mutex_unlock(&c->s->mutex);
 	}
 	pthread_rwlock_unlock(&c->s->lock);
+	decode_logcat_payload(m->msg, &m->level, m->tag, m->text);
 
 	return retval;
 }
@@ -167,20 +168,8 @@ static void *thread_main(void *arg)
 		}
 
 		if (s->is_active && FD_ISSET(adb_fd, &read_fds)) {
-			char buf[1024];
-			ssize_t r;
-			memset(buf, 0, sizeof(buf));
-			r = read(adb_fd, buf, sizeof(buf));
-			if (r <= 0) {
+			if (read_adb_output(s, adb_fd) <= 0)
 				state = STATE_CHILD_DIED;
-			} else {
-				/* remove trailing newlines */
-				while (r > 0 && buf[r - 1] == '\n') {
-					buf[r - 1] = '\0';
-					r--;
-				}
-				write_session(s, buf, r);
-			}
 		}
 	}
 
@@ -206,7 +195,7 @@ static int fork_and_exec_adb()
 		/* child */
 		close(pipe_fd[0]);
 		dup2(pipe_fd[1], STDOUT_FILENO);
-		execl("fake-adb", "./fake-adb", NULL);
+		execlp("adb", "adb", "logcat", "-B", NULL);
 		exit(EXIT_FAILURE);
 	default:
 		/* parent */
@@ -236,4 +225,26 @@ static void write_session(struct lokatt_session *s, const char *buf,
 	pthread_cond_broadcast(&s->cond);
 	pthread_mutex_unlock(&s->mutex);
 	pthread_rwlock_unlock(&s->lock);
+}
+
+static int read_adb_output(struct lokatt_session *s, int fd)
+{
+	struct logger_entry entry;
+	char buf[MSG_MAX_PAYLOAD_SIZE];
+	int payload_size;
+
+	payload_size = read_logcat(fd, &entry, buf, sizeof(buf));
+	if (payload_size > 0) {
+		struct lokatt_message m;
+		size_t size = sizeof(m) - MSG_MAX_PAYLOAD_SIZE + payload_size;
+
+		m.pid = entry.pid;
+		m.tid = entry.tid;
+		m.sec = entry.sec;
+		m.nsec = entry.nsec;
+		memcpy(m.msg, buf, payload_size);
+
+		write_session(s, (const char *)&m, size);
+	}
+	return payload_size;
 }
