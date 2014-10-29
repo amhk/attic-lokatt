@@ -10,7 +10,7 @@
 #include "logcat.h"
 #include "test.h"
 
-TEST(read_one_line)
+TEST(read_one_line_v1)
 {
 	int fd, status;
 	struct logger_entry entry;
@@ -18,12 +18,11 @@ TEST(read_one_line)
 	uint8_t level;
 	const char *tag, *text;
 
-	fd = open("t/boot.bin", O_RDONLY);
+	fd = open("t/boot-v1.bin", O_RDONLY);
 	ASSERT_GE(fd, 0);
 
 	status = read_logcat(fd, &entry, buf, sizeof(buf));
 	ASSERT_GE(status, 0);
-	ASSERT_EQ(entry.__pad, 0);
 
 	decode_logcat_payload(buf, &level, tag, text);
 	ASSERT_EQ(level, 4);
@@ -33,7 +32,7 @@ TEST(read_one_line)
 	close(fd);
 }
 
-TEST(read_entire_file)
+TEST(read_one_line_v2)
 {
 	int fd, status;
 	struct logger_entry entry;
@@ -41,13 +40,56 @@ TEST(read_entire_file)
 	uint8_t level;
 	const char *tag, *text;
 
-	fd = open("t/shutdown.bin", O_RDONLY);
+	fd = open("t/boot-v2.bin", O_RDONLY);
+	ASSERT_GE(fd, 0);
+
+	status = read_logcat(fd, &entry, buf, sizeof(buf));
+	ASSERT_GE(status, 0);
+
+	decode_logcat_payload(buf, &level, tag, text);
+	ASSERT_EQ(level, 4);
+	ASSERT_EQ(strcmp("installd", tag), 0);
+	ASSERT_EQ(strcmp("installd firing up", text), 0);
+
+	close(fd);
+}
+
+TEST(read_entire_file_v1)
+{
+	int fd, status;
+	struct logger_entry entry;
+	char buf[1024];
+	uint8_t level;
+	const char *tag, *text;
+
+	fd = open("t/shutdown-v1.bin", O_RDONLY);
 	ASSERT_GE(fd, 0);
 
 	status = read_logcat(fd, &entry, buf, sizeof(buf));
 	while (status > 0) {
 		decode_logcat_payload(buf, &level, tag, text);
-		ASSERT_EQ(entry.__pad, 0);
+		ASSERT_LT(level, 7);
+		status = read_logcat(fd, &entry, buf, sizeof(buf));
+	}
+	ASSERT_EQ(status, 0);
+
+	close(fd);
+}
+
+TEST(read_entire_file_v2)
+{
+	int fd, status;
+	struct logger_entry entry;
+	char buf[1024];
+	uint8_t level;
+	const char *tag, *text;
+
+	fd = open("t/shutdown-v2.bin", O_RDONLY);
+	ASSERT_GE(fd, 0);
+
+	status = read_logcat(fd, &entry, buf, sizeof(buf));
+	while (status > 0) {
+		decode_logcat_payload(buf, &level, tag, text);
 		ASSERT_LT(level, 7);
 		status = read_logcat(fd, &entry, buf, sizeof(buf));
 	}

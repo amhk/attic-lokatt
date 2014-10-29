@@ -5,8 +5,10 @@
 #include <stdlib.h>
 
 /*
- * This struct taken from Android (system/core/include/log/logger.h).
- * Currently, lokatt doesn't support logger_entry_v2.
+ * This struct is taken from Android (system/core/include/log/logger.h); lokatt
+ * silently discards the extra uint32_t present in logger_entry_v2 and
+ * logger_entry_v3 structs so as to coalesce all three versions into one and
+ * the same.
  */
 struct logger_entry {
 	uint16_t len;
@@ -16,7 +18,7 @@ struct logger_entry {
 	int32_t sec;
 	int32_t nsec;
 	char msg[0];
-};
+} __attribute__((__packed__));
 
 /* Read logcat entry and payload from opened file descriptor. */
 int read_logcat(int fd, struct logger_entry *header, char *payload,

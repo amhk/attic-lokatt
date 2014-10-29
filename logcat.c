@@ -95,11 +95,20 @@ static ssize_t xread1(int fd, char *buf, size_t count)
 int read_logcat(int fd, struct logger_entry *header, char *payload, size_t size)
 {
 	ssize_t r;
+	uint32_t skip;
 
 	r = xread1(fd, (char *)header, sizeof(struct logger_entry));
 	if (r <= 0)
 	    return r;
-	assert(header->__pad == 0);
+
+	/*
+	 * Try to guess if we're reading v2 or v3 headers by looking at the
+	 * padding, which is used to store the header size in v2 and v3. If we
+	 * actually are reading any of the newer formats, skip the extra
+	 * uint32_t present just before the payload.
+	 */
+	if (header->__pad != 0)
+		xread(fd, (char *)&skip, sizeof(uint32_t));
 
 	if (size < header->len)
 		/* we're lost, next call to read_logcat will fail */
