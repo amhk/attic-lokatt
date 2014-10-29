@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "logcat.h"
+#include "adb.h"
 
 /* LOGGER_ENTRY_MAX_LEN should be read from adb logcat -g */
 #define LOGGER_ENTRY_MAX_LEN (5 * 1024)

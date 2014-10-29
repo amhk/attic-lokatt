@@ -1,5 +1,5 @@
-#ifndef LOKATT_LOGCAT_H
-#define LOKATT_LOGCAT_H
+#ifndef LOKATT_ADB_H
+#define LOKATT_ADB_H
 
 #include <stdint.h>
 #include <stdlib.h>

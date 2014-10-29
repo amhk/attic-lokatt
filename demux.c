@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "logcat.h"
+#include "adb.h"
 #include "lokatt.h"
 #include "ring-buffer.h"
 

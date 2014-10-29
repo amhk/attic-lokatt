@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 
+#include "adb.h"
 #include "error.h"
-#include "logcat.h"
 #include "test.h"
 
 TEST(read_one_line_v1)
