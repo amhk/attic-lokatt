@@ -1,6 +1,14 @@
 #include <assert.h>
-#include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <fcntl.h>
+#include <stdio.h>
 
 #include "adb.h"
 
@@ -119,4 +127,93 @@ int read_logcat(int fd, struct logger_entry *header, char *payload, size_t size)
 		return -1;
 
 	return header->len;
+}
+
+struct adb {
+	pid_t pid;
+	int fd;
+	adb_cb cb;
+	void *userdata;
+
+	pthread_t thread;
+};
+
+static void *thread_main(void *arg)
+{
+	struct adb *adb = (struct adb *)arg;
+
+	for (;;) {
+		struct logger_entry header;
+		char buf[4 * 1024];
+		int payload_size;
+
+		payload_size = read_logcat(adb->fd, &header, buf, sizeof(buf));
+		if (payload_size <= 0)
+			break;
+		adb->cb(&header, buf, payload_size, adb->userdata);
+	}
+
+	return NULL;
+}
+
+struct adb *create_adb(adb_cb cb, void *userdata, const char *content_path)
+{
+	struct adb *adb;
+	int pipe_fd[2];
+	pid_t pid;
+
+	if (pipe(pipe_fd) < 0)
+		return NULL;
+
+	pid = fork();
+	switch (pid) {
+	case -1:
+		/* error */
+		close(pipe_fd[0]);
+		close(pipe_fd[1]);
+		return NULL;
+	case 0:
+		/* child */
+		close(pipe_fd[0]);
+		dup2(pipe_fd[1], STDOUT_FILENO);
+		if (content_path) {
+			int fd;
+			char buf[1024];
+			ssize_t r;
+
+			fd = open(content_path, O_RDONLY);
+			if (fd < 0)
+				exit(EXIT_FAILURE);
+			while ((r = read(fd, buf, sizeof(buf))) > 0) {
+				usleep(10);
+				write(STDOUT_FILENO, buf, r);
+			}
+			close(fd);
+			exit(EXIT_SUCCESS);
+		} else {
+			execlp("adb", "adb", "logcat", "-B", NULL);
+			exit(EXIT_FAILURE);
+		}
+	default:
+		/* parent */
+		close(pipe_fd[1]);
+		break;
+	}
+
+
+	adb = malloc(sizeof(*adb));
+	adb->pid = pid;
+	adb->fd = pipe_fd[0];
+	adb->cb = cb;
+	adb->userdata = userdata;
+	pthread_create(&adb->thread, NULL, thread_main, (void *)adb);
+	return adb;
+}
+
+void destroy_adb(struct adb *adb)
+{
+	kill(adb->pid, SIGKILL);
+	waitpid(adb->pid, NULL, 0);
+	pthread_join(adb->thread, NULL);
+	free(adb);
 }

@@ -98,6 +98,28 @@ TEST(read_entire_file_v2)
 	close(fd);
 }
 
+static void count_calls_cb(const struct logger_entry *header,
+			   const char *payload, size_t size, void *userdata)
+{
+	int *count = (int *)userdata;
+	*count = *count + 1;
+	(void)header;
+	(void)payload;
+	(void)size;
+}
+
+TEST(adb_callback)
+{
+	struct adb *adb;
+	int count = 0;
+
+	adb = create_adb(count_calls_cb, &count, "t/boot-v2.bin");
+	usleep(1000);
+	destroy_adb(adb);
+
+	ASSERT_GT(count, 0);
+}
+
 int main(int argc, char **argv)
 {
 	return test_main(argc, argv);
