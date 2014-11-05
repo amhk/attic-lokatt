@@ -135,5 +135,6 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 
 void destroy_lokatt_channel(struct lokatt_channel *c)
 {
+	destroy_ring_buffer_iterator(c->iter);
 	free(c);
 }
