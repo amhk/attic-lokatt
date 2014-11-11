@@ -145,9 +145,12 @@ int read_logcat(struct adb_stream *stream, struct logger_entry *header,
 	return header->len;
 }
 
-struct adb {
+struct subprocess {
 	pid_t pid;
-	int fd;
+	int stdin[2];
+	int stdout[2];
+	int stderr[2];
+
 	adb_cb cb;
 	void *userdata;
 	struct adb_stream *stream;
@@ -155,85 +158,115 @@ struct adb {
 	pthread_t thread;
 };
 
-static void *thread_main(void *arg)
+/* read and write ends of a pipe */
+#define R 0
+#define W 1
+
+struct adb {
+	struct subprocess logcat;
+};
+
+static void *logcat_thread(void *arg)
 {
-	struct adb *adb = (struct adb *)arg;
+	struct subprocess *proc = (struct subprocess *)arg;
 
 	for (;;) {
 		struct logger_entry header;
 		char buf[4 * 1024];
 		int payload_size;
 
-		payload_size = read_logcat(adb->stream, &header,
+		payload_size = read_logcat(proc->stream, &header,
 					   buf, sizeof(buf));
 		if (payload_size <= 0)
 			break;
-		adb->cb(&header, buf, payload_size, adb->userdata);
+		proc->cb(&header, buf, payload_size, proc->userdata);
 	}
 
 	return NULL;
 }
 
-struct adb *create_adb(adb_cb cb, void *userdata, const char *content_path)
+static int create_subprocess(struct subprocess *proc, void *(*thread)(void *),
+			     adb_cb cb, void *userdata, char *const argv[])
 {
-	struct adb *adb;
-	int pipe_fd[2];
-	pid_t pid;
+	proc->stdin[0] = 0;
+	proc->stdin[1] = 0;
+	proc->stdout[0] = 0;
+	proc->stdout[1] = 0;
+	proc->stderr[0] = 0;
+	proc->stderr[1] = 0;
 
-	if (pipe(pipe_fd) < 0)
-		return NULL;
+	if (pipe(proc->stdin) < 0)
+		goto bail;
+	if (pipe(proc->stdout) < 0)
+		goto bail;
+	if (pipe(proc->stderr) < 0)
+		goto bail;
 
-	pid = fork();
-	switch (pid) {
+	proc->pid = fork();
+	switch (proc->pid) {
 	case -1:
 		/* error */
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		return NULL;
+		goto bail;
 	case 0:
 		/* child */
-		close(pipe_fd[0]);
-		dup2(pipe_fd[1], STDOUT_FILENO);
-		if (content_path) {
-			int fd;
-			char buf[1024];
-			ssize_t r;
+		close(proc->stdin[W]);
+		close(proc->stdout[R]);
+		close(proc->stderr[R]);
 
-			fd = open(content_path, O_RDONLY);
-			if (fd < 0)
-				exit(EXIT_FAILURE);
-			while ((r = read(fd, buf, sizeof(buf))) > 0) {
-				usleep(10);
-				write(STDOUT_FILENO, buf, r);
-			}
-			close(fd);
-			exit(EXIT_SUCCESS);
-		} else {
-			execlp("adb", "adb", "logcat", "-B", NULL);
-			exit(EXIT_FAILURE);
-		}
+		dup2(proc->stdin[R], STDIN_FILENO);
+		dup2(proc->stdout[W], STDOUT_FILENO);
+		dup2(proc->stderr[W], STDERR_FILENO);
+
+		execvp("adb", argv);
+
+		exit(EXIT_FAILURE);
 	default:
 		/* parent */
-		close(pipe_fd[1]);
-		break;
+		close(proc->stdin[R]);
+		close(proc->stdout[W]);
+		close(proc->stderr[W]);
 	}
 
+	proc->cb = cb;
+	proc->userdata = userdata;
+	proc->stream = create_adb_stream(proc->stdout[R]);
+	pthread_create(&proc->thread, NULL, thread, proc);
+	return 0;
+bail:
+	close(proc->stdin[0]);
+	close(proc->stdin[1]);
+	close(proc->stdout[0]);
+	close(proc->stdout[1]);
+	close(proc->stderr[0]);
+	close(proc->stderr[1]);
+	return -1;
+}
 
+static void destroy_subprocess(const struct subprocess *proc)
+{
+	kill(proc->pid, SIGKILL);
+	waitpid(proc->pid, NULL, 0);
+	pthread_join(proc->thread, NULL);
+	destroy_adb_stream(proc->stream);
+}
+
+struct adb *create_adb(adb_cb cb, void *userdata)
+{
+	struct adb *adb;
 	adb = malloc(sizeof(*adb));
-	adb->pid = pid;
-	adb->fd = pipe_fd[0];
-	adb->cb = cb;
-	adb->userdata = userdata;
-	adb->stream = create_adb_stream(adb->fd);
-	pthread_create(&adb->thread, NULL, thread_main, (void *)adb);
+
+	char *argv[] = { "adb", "logcat", "-B", NULL };
+	if (create_subprocess(&adb->logcat, logcat_thread,
+			      cb, userdata, argv) < 0) {
+		free(adb);
+		return NULL;
+	}
+
 	return adb;
 }
 
 void destroy_adb(struct adb *adb)
 {
-	kill(adb->pid, SIGKILL);
-	waitpid(adb->pid, NULL, 0);
-	pthread_join(adb->thread, NULL);
-	destroy_adb_stream(adb->stream);
+	destroy_subprocess(&adb->logcat);
 	free(adb);
 }

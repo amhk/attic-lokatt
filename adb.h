@@ -44,7 +44,7 @@ struct adb;
 typedef void (*adb_cb)(const struct logger_entry *entry, const char *payload,
 		       size_t payload_size, void *userdata);
 
-struct adb *create_adb(adb_cb cb, void *userdata, const char *content_path);
+struct adb *create_adb(adb_cb cb, void *userdata);
 void destroy_adb(struct adb *adb);
 
 #endif

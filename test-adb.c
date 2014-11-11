@@ -118,26 +118,30 @@ TEST(read_entire_file_v2)
 	close(fd);
 }
 
-static void count_calls_cb(const struct logger_entry *header,
-			   const char *payload, size_t size, void *userdata)
+static void cb(const struct logger_entry *header, const char *payload,
+	       size_t size, void *userdata)
 {
-	int *count = (int *)userdata;
-	*count = *count + 1;
 	(void)header;
 	(void)payload;
 	(void)size;
+	(void)userdata;
+	exit(EXIT_SUCCESS);
 }
 
 TEST(adb_callback)
 {
 	struct adb *adb;
-	int count = 0;
 
-	adb = create_adb(count_calls_cb, &count, "t/boot-v2.bin");
-	usleep(1000);
+	/*
+	 * If no callback arrives within 10 seconds, SIGALRM will be cause the
+	 * process to exit with an error, which in turn will fail the test.
+	 * Major caveat: this test case requires a connected device to pass.
+	 */
+	alarm(10);
+	adb = create_adb(cb, NULL);
+	usleep(2 * 1000 * 1000);
 	destroy_adb(adb);
-
-	ASSERT_GT(count, 0);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)

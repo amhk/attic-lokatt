@@ -52,7 +52,7 @@ struct lokatt_session *create_lokatt_session(size_t buffer_size)
 	s = malloc(sizeof(*s));
 	s->rb = create_ring_buffer(buffer_size);
 	s->is_active = 0;
-	s->adb = create_adb(adb_logcat_cb, s, NULL);
+	s->adb = create_adb(adb_logcat_cb, s);
 	pthread_mutex_init(&s->mutex, NULL);
 	pthread_cond_init(&s->cond, NULL);
 	pthread_rwlock_init(&s->lock, NULL);
