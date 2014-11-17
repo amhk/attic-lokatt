@@ -3,18 +3,21 @@ liblokatt_objects += adb.o
 liblokatt_objects += demux.o
 liblokatt_objects += error.o
 liblokatt_objects += ring-buffer.o
+liblokatt_objects += strbuf.o
 
 binary := lokatt
 
 test_binaries :=
 test_binaries += test-adb
 test_binaries += test-ring-buffer
+test_binaries += test-strbuf
 
 headers :=
 headers += adb.h
 headers += error.h
 headers += lokatt.h
 headers += ring-buffer.h
+headers += strbuf.h
 headers += test.h
 
 liblokatt = liblokatt.a

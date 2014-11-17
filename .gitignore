@@ -5,4 +5,5 @@
 /lokatt
 /test-adb
 /test-ring-buffer
+/test-strbuf
 tags
