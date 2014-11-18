@@ -40,6 +40,11 @@ ifndef V
 	QUIET_AR = @echo "    AR $@";
 	QUIET_ANALYZE = @echo "    ANALYZE $@";
 	QUIET_TAGS = @echo "    TAGS";
+	QUIET_TEST = @echo "    TEST";
+endif
+
+ifdef VALGRIND
+	TESTFLAGS := --valgrind
 endif
 
 %.d: %.c
@@ -68,7 +73,7 @@ $(tags): $(sources)
 	$(QUIET_TAGS)ctags --fields=+l $(sources)
 
 test: $(test_binaries)
-	@for binary in $(test_binaries); do ./$${binary}; done
+	$(QUIET_TEST)./run-tests.py $(TESTFLAGS) $(test_binaries)
 
 clean:
 	$(RM) $(deps)
