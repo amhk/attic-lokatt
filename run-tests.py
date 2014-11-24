@@ -77,10 +77,7 @@ def _execute_test(executable, testcase='', valgrind=False):
     retval = subprocess.call(shlex.split(cmdline))
     os.close(pipe_w)
     with os.fdopen(pipe_r) as fin:
-        raw = fin.read()
-        with open('raw.xml', 'w') as fout:
-            fout.write(raw)
-        retval += _parse_valgrind_output(raw)
+        retval += _parse_valgrind_output(fin.read())
     return retval
 
 def main():
