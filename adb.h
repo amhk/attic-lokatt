@@ -20,9 +20,10 @@ struct logger_entry {
 	char msg[0];
 } __attribute__((__packed__));
 
-/* Read logcat entry and payload from opened file descriptor. */
-int read_logcat(int fd, struct logger_entry *header, char *payload,
-		size_t size);
+struct adb_stream *create_adb_stream(int open_fd);
+void destroy_adb_stream(struct adb_stream *stream);
+int read_logcat(struct adb_stream *stream, struct logger_entry *header,
+		char *payload, size_t size);
 
 #define decode_logcat_payload(payload_ptr, level_ptr, tag_ptr, text_ptr) \
 	do { \
@@ -36,7 +37,7 @@ int read_logcat(int fd, struct logger_entry *header, char *payload,
 		p = strchr(text_ptr, '\0') - 1; \
 		while (*p == '\n') { \
 			*p-- = '\0'; \
-		}\
+		} \
 	} while (0)
 
 #endif
