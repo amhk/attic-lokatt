@@ -47,6 +47,10 @@ ifdef VALGRIND
 	TESTFLAGS := --valgrind
 endif
 
+ifndef T
+	T := $(test_binaries)
+endif
+
 %.d: %.c
 	$(QUIET_DEP)$(CC) $(CFLAGS) -MM $< | sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
@@ -73,7 +77,7 @@ $(tags): $(sources)
 	$(QUIET_TAGS)ctags --fields=+l $(sources)
 
 test: $(test_binaries)
-	$(QUIET_TEST)./run-tests.py $(TESTFLAGS) $(test_binaries)
+	$(QUIET_TEST)./run-tests.py $(TESTFLAGS) $(T)
 
 clean:
 	$(RM) $(deps)
