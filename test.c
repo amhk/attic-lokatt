@@ -10,6 +10,7 @@
 #include "test.h"
 
 #define ANSI_GREEN "\033[32m"
+#define ANSI_YELLOW "\033[33m"
 #define ANSI_RED "\033[31m"
 #define ANSI_RESET "\033[0m"
 
@@ -47,6 +48,9 @@ static void run_single_test(const struct test *t, int *passed, int *failed)
 	if (info.si_code == CLD_EXITED && info.si_status == EXIT_SUCCESS) {
 		(*passed)++;
 		cprintf(ANSI_RESET, "[       OK ] %s\n", t->name);
+	} else if (info.si_code == CLD_EXITED &&
+		   info.si_status == EXIT_SKIPPED) {
+		cprintf(ANSI_YELLOW, "[  SKIPPED ] %s\n", t->name);
 	} else {
 		(*failed)++;
 		cprintf(ANSI_RED, "[     FAIL ] %s\n", t->name);

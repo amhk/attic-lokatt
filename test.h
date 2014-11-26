@@ -19,4 +19,6 @@ struct test {
 
 int test_main(int argc, char **argv);
 
+#define EXIT_SKIPPED 127
+
 #endif

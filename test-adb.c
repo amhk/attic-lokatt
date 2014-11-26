@@ -1,14 +1,48 @@
 #include <fcntl.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
-#include <string.h>
 
 #include <stdio.h>
 
 #include "adb.h"
 #include "error.h"
 #include "test.h"
+
+/* read and write ends of a pipe */
+#define R 0
+#define W 1
+
+static int is_device_connected()
+{
+	char buf[1024];
+	pid_t pid;
+	int fd[2];
+
+	if (pipe(fd) < 0)
+		return 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	pid = fork();
+	switch (pid) {
+	case -1:
+		return 0;
+	case 0:
+		close(fd[R]);
+		dup2(fd[W], STDOUT_FILENO);
+		execlp("adb", "adb", "get-state", NULL);
+		exit(EXIT_FAILURE);
+	default:
+		close(fd[W]);
+		waitpid(pid, NULL, 0);
+		read(fd[R], buf, sizeof(buf));
+		close(fd[R]);
+		return !strcmp(buf, "device\n");
+	}
+}
 
 TEST(read_one_line_v1)
 {
@@ -132,10 +166,12 @@ TEST(adb_callback)
 {
 	struct adb *adb;
 
+	if (!is_device_connected())
+		exit(EXIT_SKIPPED);
+
 	/*
 	 * If no callback arrives within 10 seconds, SIGALRM will be cause the
 	 * process to exit with an error, which in turn will fail the test.
-	 * Major caveat: this test case requires a connected device to pass.
 	 */
 	alarm(10);
 	adb = create_adb(cb, NULL);
