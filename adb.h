@@ -40,11 +40,11 @@ int read_logcat(struct adb_stream *stream, struct logger_entry *header,
 		} \
 	} while (0)
 
-#endif
-
 struct adb;
 typedef void (*adb_cb)(const struct logger_entry *entry, const char *payload,
 		       size_t payload_size, void *userdata);
 
 struct adb *create_adb(adb_cb cb, void *userdata, const char *content_path);
 void destroy_adb(struct adb *adb);
+
+#endif
