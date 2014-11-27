@@ -9,13 +9,13 @@ struct test {
 };
 
 #define TEST(name) \
-	static void name(void); \
+	static void lokatt_test_##name(void); \
 	const struct test test_##name \
 		__attribute__((section ("test_section"))) = \
 	{ \
-		#name, name \
+		#name, lokatt_test_##name \
 	}; \
-	static void name()
+	static void lokatt_test_##name()
 
 int test_main(int argc, char **argv);
 
