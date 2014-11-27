@@ -9,6 +9,7 @@
 
 #include "adb.h"
 #include "error.h"
+#include "strbuf.h"
 #include "test.h"
 
 /* read and write ends of a pipe */
@@ -42,6 +43,22 @@ static int is_device_connected()
 		close(fd[R]);
 		return !strcmp(buf, "device\n");
 	}
+}
+
+static void cb_ignore(const struct logger_entry *header, const char *payload,
+		      size_t size, void *userdata)
+{
+	(void)header;
+	(void)payload;
+	(void)size;
+	(void)userdata;
+}
+
+static void cb_exit(const struct logger_entry *header, const char *payload,
+		    size_t size, void *userdata)
+{
+	cb_ignore(header, payload, size, userdata);
+	exit(EXIT_SUCCESS);
 }
 
 TEST(read_one_line_v1)
@@ -152,16 +169,6 @@ TEST(read_entire_file_v2)
 	close(fd);
 }
 
-static void cb(const struct logger_entry *header, const char *payload,
-	       size_t size, void *userdata)
-{
-	(void)header;
-	(void)payload;
-	(void)size;
-	(void)userdata;
-	exit(EXIT_SUCCESS);
-}
-
 TEST(adb_callback)
 {
 	struct adb *adb;
@@ -174,10 +181,35 @@ TEST(adb_callback)
 	 * process to exit with an error, which in turn will fail the test.
 	 */
 	alarm(10);
-	adb = create_adb(cb, NULL);
+	adb = create_adb(cb_exit, NULL);
 	usleep(2 * 1000 * 1000);
 	destroy_adb(adb);
 	exit(EXIT_FAILURE);
+}
+
+TEST(adb_shell)
+{
+	struct adb *adb;
+	int retval;
+	struct strbuf sb = STRBUF_INIT;
+
+	if (!is_device_connected())
+		exit(EXIT_SKIPPED);
+
+	adb = create_adb(cb_ignore, NULL);
+
+	retval = adb_shell(adb, "cat /proc/1/stat", &sb);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(strncmp(sb.buf, "1 (init) ", 9), 0);
+
+	strbuf_destroy(&sb);
+	strbuf_init(&sb, 128);
+
+	retval = adb_shell(adb, "cat /proc/1/cmdline", &sb);
+	ASSERT_EQ(retval, 0);
+
+	destroy_adb(adb);
+	strbuf_destroy(&sb);
 }
 
 int main(int argc, char **argv)

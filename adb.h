@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+struct strbuf;
+
 /*
  * This struct is taken from Android (system/core/include/log/logger.h); lokatt
  * silently discards the extra uint32_t present in logger_entry_v2 and
@@ -46,5 +48,7 @@ typedef void (*adb_cb)(const struct logger_entry *entry, const char *payload,
 
 struct adb *create_adb(adb_cb cb, void *userdata);
 void destroy_adb(struct adb *adb);
+
+int adb_shell(struct adb *adb, const char *cmdline, struct strbuf *sb);
 
 #endif

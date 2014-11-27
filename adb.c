@@ -1,15 +1,17 @@
+#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <fcntl.h>
-#include <stdio.h>
+extern void *memrchr(const void *, int, size_t);
 
 #include "adb.h"
+#include "strbuf.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -51,7 +53,8 @@ static size_t compact_crnl_to_nl(char *buf, size_t count, int *trailing_cr)
 		p++;
 	}
 
-	*trailing_cr = *(end - 1) == 0x0d;
+	if (trailing_cr)
+		*trailing_cr = *(end - 1) == 0x0d;
 	return end - buf;
 }
 
@@ -269,4 +272,70 @@ void destroy_adb(struct adb *adb)
 {
 	destroy_subprocess(&adb->logcat);
 	free(adb);
+}
+
+static int adb_shell_v(struct adb *adb, char *const argv[] , struct strbuf *sb)
+{
+	pid_t pid;
+	int pipe_fd[2];
+	int retval = -1;
+	char *equals;
+
+	(void)adb; /* should be used to check args to adb */
+
+	if (pipe(pipe_fd) < 0)
+		goto bail;
+
+	pid = fork();
+	switch (pid) {
+	case -1:
+		close(pipe_fd[R]);
+		close(pipe_fd[W]);
+		goto bail;
+	case 0:
+		close(pipe_fd[R]);
+		dup2(pipe_fd[W], STDOUT_FILENO);
+		execvp("adb", argv);
+		exit(EXIT_FAILURE);
+	default:
+		close(pipe_fd[W]);
+	}
+
+	waitpid(pid, NULL, 0);
+	for (;;) {
+		char buf[128];
+		ssize_t r;
+
+		r = read(pipe_fd[R], buf, sizeof(buf));
+		if (r <= 0)
+			break;
+		strbuf_add(sb, buf, r);
+	}
+	close(pipe_fd[R]);
+
+	sb->str_size = compact_crnl_to_nl(sb->buf, sb->str_size, NULL);
+	sb->buf[sb->str_size] = '\0';
+	equals = memrchr(sb->buf, '=', sb->str_size);
+	if (!equals)
+		goto bail;
+	sscanf(equals, "=%d", &retval);
+	*equals = '\0';
+bail:
+	return retval;
+}
+
+int adb_shell(struct adb *adb, const char *cmdline, struct strbuf *sb)
+{
+	char *argv[] = { "adb", "shell", "x", NULL };
+	int retval;
+	struct strbuf full_cmdline = STRBUF_INIT;
+
+	strbuf_addstr(&full_cmdline, cmdline);
+	strbuf_addstr(&full_cmdline, "; echo -n \"=$?\"");
+	argv[2] = full_cmdline.buf;
+
+	retval = adb_shell_v(adb, argv, sb);
+
+	strbuf_destroy(&full_cmdline);
+	return retval;
 }
