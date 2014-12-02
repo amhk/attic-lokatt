@@ -4,6 +4,7 @@
 /liblokatt.a
 /lokatt
 /test-adb
+/test-dict
 /test-ring-buffer
 /test-strbuf
 tags
