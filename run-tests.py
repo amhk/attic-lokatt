@@ -73,7 +73,7 @@ def _execute_test(executable, testcase='', valgrind=False):
         return subprocess.call(shlex.split(cmdline))
 
     pipe_r, pipe_w = os.pipe()
-    cmdline = 'valgrind --trace-children=yes --leak-check=full --track-origins=yes --xml=yes --xml-fd={} {} {}'.format(pipe_w, executable, testcase)
+    cmdline = 'valgrind --trace-children=yes --leak-check=full --track-origins=yes --suppressions=adb.supp --xml=yes --xml-fd={} {} {}'.format(pipe_w, executable, testcase)
     retval = subprocess.call(shlex.split(cmdline))
     os.close(pipe_w)
     with os.fdopen(pipe_r) as fin:
