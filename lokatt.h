@@ -25,6 +25,7 @@ struct lokatt_message {
 	uint8_t level;
 	const char *tag;
 	const char *text;
+	char pname[128];
 	char msg[MSG_MAX_PAYLOAD_SIZE];
 };
 

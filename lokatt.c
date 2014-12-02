@@ -27,8 +27,9 @@ static int is_filtered_out(const struct lokatt_message *m)
 
 static void print_message(const struct lokatt_message *m)
 {
-	printf("%8d %8d %12d %12d %d %-32s %s\n",
-	       m->pid, m->tid, m->sec, m->nsec, m->level, m->tag, m->text);
+	printf("%-10s %8d %8d %12d %12d %d %-32s %s\n",
+	       m->pname, m->pid, m->tid, m->sec, m->nsec,
+	       m->level, m->tag, m->text);
 }
 
 int main()
