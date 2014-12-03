@@ -76,8 +76,15 @@ def _execute_test(executable, testcase='', valgrind=False):
     cmdline = 'valgrind --trace-children=yes --leak-check=full --track-origins=yes --suppressions=adb.supp --xml=yes --xml-fd={} {} {}'.format(pipe_w, executable, testcase)
     retval = subprocess.call(shlex.split(cmdline))
     os.close(pipe_w)
+    # pipe_r will be closed automatically at the end of the 'with' block
     with os.fdopen(pipe_r) as fin:
-        retval += _parse_valgrind_output(fin.read())
+        xml = []
+        while True:
+            line = fin.readline()
+            xml.append(line)
+            if '</valgrindoutput>' in line:
+                break
+        retval += _parse_valgrind_output('\n'.join(xml))
     return retval
 
 def main():
