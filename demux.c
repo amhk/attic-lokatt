@@ -119,12 +119,18 @@ void stop_lokatt_session(struct lokatt_session *s)
 
 void destroy_lokatt_session(struct lokatt_session *s)
 {
+	/* start shutdown of adb logcat thread */
+	destroy_adb(s->adb);
+
+	/* wait for any ongoing adb callbacks to finish before moving on */
+	pthread_rwlock_wrlock(&s->lock);
+	dict_destroy(s->pnames, free);
+	destroy_ring_buffer(s->rb);
+	pthread_rwlock_unlock(&s->lock);
+
 	pthread_rwlock_destroy(&s->lock);
 	pthread_cond_destroy(&s->cond);
 	pthread_mutex_destroy(&s->mutex);
-	destroy_adb(s->adb);
-	dict_destroy(s->pnames, free);
-	destroy_ring_buffer(s->rb);
 	free(s);
 }
 
