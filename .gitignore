@@ -1,10 +1,10 @@
 *.d
 *.o
 *.plist
-/liblokatt.so
-/lokatt
-/test-adb
-/test-dict
-/test-ring-buffer
-/test-strbuf
+common/lib/liblokatt.so
+common/lib/lokatt
+common/lib/test-adb
+common/lib/test-dict
+common/lib/test-ring-buffer
+common/lib/test-strbuf
 tags
