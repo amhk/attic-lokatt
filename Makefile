@@ -22,7 +22,7 @@ headers += ring-buffer.h
 headers += strbuf.h
 headers += test.h
 
-liblokatt = liblokatt.a
+liblokatt = liblokatt.so
 test_objects := $(patsubst %, %.o, $(test_binaries)) test.o
 objects := $(binary).o $(liblokatt_objects) $(test_objects)
 deps := $(objects:.o=.d)
@@ -31,7 +31,7 @@ plists := $(objects:.o=.plist)
 tags := tags
 
 CC := clang
-CFLAGS := -Wall -Wextra -pthread -ggdb -O0
+CFLAGS := -Wall -Wextra -pthread -ggdb -O0 -fPIC
 CFLAGS += -DDEBUG
 
 LD := $(CC)
@@ -70,8 +70,8 @@ test-%: test-%.o test.o $(LIBS)
 
 all: $(tags) $(binary) $(test_binaries)
 
-$(liblokatt): $(liblokatt_objects)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
+$(LIBS): $(liblokatt_objects)
+	$(QUIET_LD)$(LD) $(LDFLAGS) -shared -o $@ $^
 
 $(binary): $(binary).o $(LIBS)
 	$(QUIET_LD)$(LD) $(LDFLAGS) -o $@ $^
