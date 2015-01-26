@@ -68,13 +68,15 @@ def _parse_valgrind_output(raw):
         retval += 1
 
 def _execute_test(executable, testcase='', valgrind=False):
+    env = {'LD_LIBRARY_PATH': os.path.dirname(executable)}
+
     if not valgrind:
         cmdline = '{} {}'.format(executable, testcase)
-        return subprocess.call(shlex.split(cmdline))
+        return subprocess.call(shlex.split(cmdline), env=env)
 
     pipe_r, pipe_w = os.pipe()
     cmdline = 'valgrind --trace-children=yes --leak-check=full --track-origins=yes --suppressions=adb.supp --xml=yes --xml-fd={} {} {}'.format(pipe_w, executable, testcase)
-    retval = subprocess.call(shlex.split(cmdline))
+    retval = subprocess.call(shlex.split(cmdline), env=env)
     os.close(pipe_w)
     # pipe_r will be closed automatically at the end of the 'with' block
     with os.fdopen(pipe_r) as fin:
