@@ -2,6 +2,7 @@
 #define LOKATT_LOKATT_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct lokatt_session;
 struct lokatt_channel;
