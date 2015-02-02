@@ -26,6 +26,7 @@ struct lokatt_session {
 struct lokatt_channel {
 	struct lokatt_session *s;
 	struct ring_buffer_iterator *iter;
+	struct strbuf filter;
 };
 
 static void lookup_process_name(const struct lokatt_session *s, uint32_t pid,
@@ -141,6 +142,7 @@ struct lokatt_channel *create_lokatt_channel(struct lokatt_session *s)
 	c = malloc(sizeof(*c));
 	c->s = s;
 	c->iter = create_ring_buffer_iterator(s->rb);
+	strbuf_init(&c->filter, 32);
 	return c;
 }
 
@@ -180,6 +182,7 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 
 void destroy_lokatt_channel(struct lokatt_channel *c)
 {
+	strbuf_destroy(&c->filter);
 	destroy_ring_buffer_iterator(c->iter);
 	free(c);
 }
