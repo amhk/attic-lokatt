@@ -17,29 +17,23 @@ class Message(ctypes.Structure):
     #     char pname[128];
     #     char msg[MSG_MAX_PAYLOAD_SIZE];
     # };
-    _fields_ = [("pid", c_int32),
-                ("tid", c_int32),
-                ("sec", c_int32),
-                ("nsec", c_int32),
-                ("level", c_uint8),
-                ("tag", c_char_p),
-                ("text", c_char_p),
-                ("pname", c_char * 128),
-                ("msg", c_char * (4 * 1024))]
+    _fields_ = [('pid', c_int32),
+                ('tid', c_int32),
+                ('sec', c_int32),
+                ('nsec', c_int32),
+                ('level', c_uint8),
+                ('tag', c_char_p),
+                ('text', c_char_p),
+                ('pname', c_char * 128),
+                ('msg', c_char * (4 * 1024))]
 
     def __str__(self):
         return "pname={0.pname} pid={0.pid} tid={0.tid} sec={0.sec} nsec={0.nsec} level={0.level} tag={0.tag} text={0.text}".format(self)
 
 
-def validate_return_value(i):
-    if i != 0:
-        raise Exception("function returned %d, expected 0" % i)
-    return i
-
-
 def get_lib_path():
     # path to logcat.py
-    path = inspect.getfile(inspect.currentframe())
+    path = __file__
     # path to common
     path = os.path.abspath(os.path.split(path)[0])
     # realpath() will prevent symlink problems
@@ -47,11 +41,12 @@ def get_lib_path():
 
 liblokatt = ctypes.CDLL(get_lib_path())
 
+
 def _empty_message_handler(m: Message):
     '''
     Do nothin message handler for Logcat
-    :param m:
     '''
+
 
 class Logcat():
 
