@@ -62,6 +62,11 @@ void strbuf_addstr(struct strbuf *sb, const char *str)
 	strbuf_add(sb, str, strlen(str));
 }
 
+void strbuf_addch(struct strbuf *sb, const char ch)
+{
+	strbuf_add(sb, &ch, 1);
+}
+
 void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
 {
 	va_list ap, ap_cp;

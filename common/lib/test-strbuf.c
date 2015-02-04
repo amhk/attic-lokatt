@@ -41,6 +41,9 @@ TEST(add_pre_allocated)
 	strbuf_addf(&sb, " %d '%6s'", 1234, "abc");
 	ASSERT_STRBUF_EQ(&sb, "foobar 1234 '   abc'");
 
+	strbuf_addch(&sb, 'x');
+	ASSERT_STRBUF_EQ(&sb, "foobar 1234 '   abc'x");
+
 	strbuf_destroy(&sb);
 }
 
