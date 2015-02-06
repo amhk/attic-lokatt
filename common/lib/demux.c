@@ -26,6 +26,8 @@ struct lokatt_session {
 struct lokatt_channel {
 	struct lokatt_session *s;
 	struct ring_buffer_iterator *iter;
+	int is_closed;
+	pthread_mutex_t mutex;
 };
 
 static void lookup_process_name(const struct lokatt_session *s, uint32_t pid,
@@ -141,7 +143,30 @@ struct lokatt_channel *create_lokatt_channel(struct lokatt_session *s)
 	c = malloc(sizeof(*c));
 	c->s = s;
 	c->iter = create_ring_buffer_iterator(s->rb);
+	c->is_closed = 0;
+	pthread_mutex_init(&c->mutex, NULL);
 	return c;
+}
+
+void close_lokatt_channel(struct lokatt_channel  *c)
+{
+	pthread_mutex_lock(&c->mutex);
+	c->is_closed = 1;
+	pthread_mutex_unlock(&c->mutex);
+	struct lokatt_session *s = c->s;
+	// wake all threads waiting for new messages to give closed channels a chance to finish gracefully
+	pthread_mutex_lock(&s->mutex);
+	pthread_cond_broadcast(&s->cond);
+	pthread_mutex_unlock(&s->mutex);
+}
+
+int is_closed(struct lokatt_channel *c)
+{
+	int closed;
+	pthread_mutex_lock(&c->mutex);
+	closed = c->is_closed;
+	pthread_mutex_unlock(&c->mutex);
+	return closed;
 }
 
 int read_lokatt_channel(const struct lokatt_channel *c,
@@ -154,6 +179,15 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 
 		/* is the session still active? */
 		pthread_rwlock_rdlock(&c->s->lock);
+
+		/* is the channel still open */
+		if (c->is_closed)
+		{
+			retval = -1;
+			break;
+		}
+
+		/* is the session still active? */
 		if (!c->s->is_active) {
 			retval = -1;
 			break;

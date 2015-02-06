@@ -1,5 +1,6 @@
 liblokatt_objects :=
 liblokatt_objects += adb.o
+liblokatt_objects += bridge.o
 liblokatt_objects += demux.o
 liblokatt_objects += dict.o
 liblokatt_objects += error.o
@@ -16,6 +17,7 @@ test_binaries += test-strbuf
 
 headers :=
 headers += adb.h
+headers += bridge.h
 headers += error.h
 headers += lokatt.h
 headers += ring-buffer.h
