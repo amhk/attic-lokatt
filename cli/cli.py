@@ -1,8 +1,13 @@
 import datetime
+from time import sleep
 
+from colorama import Fore
 from common.liblokatt import Message
 from common.view import View
-from colorama import Fore
+import sys
+import signal
+import time
+
 
 # This matches the order from android_LogPriority
 # in platform/system/core/include/android/log.h
@@ -40,10 +45,19 @@ class Cli(View):
         View.__init__(self, logcat)
 
     def show(self):
-        # We don't need to create any ui components just start the logcat and
-        # wait for the messages to arrive to on_message
-        self.logcat.start()
-        self.logcat.stop()
+        self.logcat.start() # Start the logcat session
+        channel = self.logcat.create_channel(message_callback=print_message)
+        channel.open()
+        def signal_handler(signal, frame):
+            channel.close()
+            self.logcat.stop()
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+        # All the messages will arrive on a separate thread.
+        # What should we do with the main thrad?
+        while self.logcat.is_open():
+            time.sleep(1)
 
     def on_message(self, m: Message):
         print_message(m)

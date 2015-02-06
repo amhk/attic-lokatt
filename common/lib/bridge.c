@@ -16,7 +16,7 @@ void *run(void *param)
 {
 	struct lokatt_message m;
 	struct async_channel *ac = (struct async_channel *) param;
-	while (!is_closed(ac->c) && read_lokatt_channel(ac->c, &m) != -1)
+	while (read_lokatt_channel(ac->c, &m) != -1)
 	{
 		ac->callback(&m);
 	}

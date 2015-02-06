@@ -1,8 +1,6 @@
+from ctypes import c_char, c_char_p, c_int32, c_uint8, CFUNCTYPE
 import ctypes
-import inspect
 import os
-
-from ctypes import c_char, c_char_p, c_int32, c_uint8
 
 
 class Message(ctypes.Structure):
@@ -50,19 +48,74 @@ def _empty_message_handler(m: Message):
 
 class Logcat():
 
+    '''
+    Class that represents a logcat session
+    A logcat session can have several open channels that will receive callbacks
+    for new messages.
+    '''
+
     def __init__(self):
         self.buffer_size = 1024 * 1024
-        self.session_handle = liblokatt.create_lokatt_session(self.buffer_size)
-        self.message_handler = _empty_message_handler
+        self.session = liblokatt.create_lokatt_session(self.buffer_size)
+        self.open = False
 
     def start(self):
-        m = Message()
-        liblokatt.start_lokatt_session(self.session_handle)
-        self.channel_handle = liblokatt.create_lokatt_channel(
-            self.session_handle)
-        while liblokatt.read_lokatt_channel(self.channel_handle, ctypes.addressof(m)) == 0:
-            self.message_handler(m)
+        if (self.open):
+            return
+        liblokatt.start_lokatt_session(self.session)
+        self.open = True
+
+    def is_open(self):
+        return self.open
 
     def stop(self):
-        liblokatt.destroy_lokatt_channel(self.channel_handle)
-        liblokatt.destroy_lokatt_session(self.session_handle)
+        if (not self.is_open()):
+            raise ValueError('Logcat session is not open')
+        liblokatt.destroy_lokatt_session(self.session)
+        self.open = False
+
+    def create_channel(self, message_callback=_empty_message_handler):
+        if (not self.is_open()):
+            raise ValueError('Logcat session is not open')
+        # TODO: add filter arguments when it is supported in liblokatt.so
+        return LogcatChannel(self.session, message_callback)
+
+
+class LogcatChannel():
+
+    '''
+    A channel for receiving logcat messages. The channel is connected to a
+    logcat session.
+    '''
+
+    def __init__(self, session, message_callback=_empty_message_handler):
+        self.session = session
+        self.callback = self._get_callback_function(message_callback)
+
+    def _get_callback_function(self, message_callback):
+        # Wrap the message_callback in a ctypes function
+        # The caller need to keep a reference to the returned type to keep it
+        # from being garbage collected.
+        def callback(m):
+            # This closure function is needed to get a function without
+            # "a self argument
+            message_callback(m[0])
+
+        CBFUNC = CFUNCTYPE(None, ctypes.POINTER(Message))
+        return CBFUNC(callback);
+
+    def open(self):
+        '''
+        Open this channel. After open is called the message_handler will start
+        to receive messages on a dedicated thread.
+        '''
+        self.handle = liblokatt.open_new_channel(self.session, self.callback)
+    pass
+
+    def close(self):
+        '''
+        Close the channel. This will cause the message_handler to stop receiving
+        messages.
+        '''
+        liblokatt.close_async_channel(self.handle)
+    pass
