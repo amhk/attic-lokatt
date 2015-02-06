@@ -38,5 +38,7 @@ struct lokatt_channel *create_lokatt_channel(struct lokatt_session *s);
 int read_lokatt_channel(const struct lokatt_channel *c,
 			 struct lokatt_message *m);
 void destroy_lokatt_channel(struct lokatt_channel *c);
+void close_lokatt_channel(struct lokatt_channel *c);
+int is_lokatt_channel_closed(struct lokatt_channel *c);
 
 #endif
