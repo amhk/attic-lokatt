@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# TODO: Use a proper pyython virtual environment.
+# As it is, this script is a bit silly
+script_path=$(dirname $(readlink -f $0))
+python3 $script_path/lokatt.py
