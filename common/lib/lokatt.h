@@ -2,6 +2,7 @@
 #define LOKATT_LOKATT_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct lokatt_session;
 struct lokatt_channel;
@@ -40,5 +41,7 @@ int read_lokatt_channel(const struct lokatt_channel *c,
 void destroy_lokatt_channel(struct lokatt_channel *c);
 void close_lokatt_channel(struct lokatt_channel *c);
 int is_lokatt_channel_closed(struct lokatt_channel *c);
+int set_lokatt_channel_filter(const struct lokatt_channel *c,
+			      const char *filter);
 
 #endif

@@ -5,6 +5,7 @@ common/lib/liblokatt.so
 common/lib/lokatt
 common/lib/test-adb
 common/lib/test-dict
+common/lib/test-filter
 common/lib/test-ring-buffer
 common/lib/test-strbuf
 tags
