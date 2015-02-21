@@ -26,7 +26,15 @@ _lokatt_activate_venv()
 _lokatt_create_venv()
 {
 	echo "creating virtual environment..."
-	${PYVENV} ${T}/venv
+	${PYVENV} --without-pip venv
+	# TODO: Revert the patch that added this workaround.
+	# This is a workaround for a bug in pyvenv-3.4 in Debian and Ubuntu
+	# It should be possible to use pyvenv with pip from Ubuntu 15.04
+	# For more information see
+	# https://gist.github.com/denilsonsa/21e50a357f2d4920091e#file-python-virtual-environments-on-debian-and-ubuntu-md
+	source venv/bin/activate
+	curl https://bootstrap.pypa.io/get-pip.py | python
+	deactivate
 	return $?
 }
 
