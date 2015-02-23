@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import re
+import shlex
+import subprocess
+import sys
+
+class Line:
+    def __init__(self, path, lineno, is_context, text):
+        self._path = path
+        self._lineno = lineno
+        self._is_context = is_context
+        self._text = text
+
+
+class Hunk:
+    def __init__(self, path, ins_lineno, del_lineno):
+        self._path = path
+        self._ins_lineno = ins_lineno
+        self._del_lineno = del_lineno
+        self._before = []
+        self._after = []
+
+    def add_context(self, text):
+        self.add_deletion(text, True)
+        self.add_insertion(text, True)
+
+    def add_deletion(self, text, is_context = False):
+        line = Line(self._path, self._ins_lineno, is_context, text)
+        self._del_lineno += 1
+        self._before.append(line)
+
+    def add_insertion(self, text, is_context = False):
+        line = Line(self._path, self._ins_lineno, is_context, text)
+        self._ins_lineno += 1
+        self._after.append(line)
+
+    def grep(self, regex, regex_filename, tab_size):
+        if len(self._after) == 0 or not regex_filename.search(self._after[0]._path):
+            return []
+        def get_text(x, tab_size):
+            if tab_size is not None:
+                return x._text.replace('\t', ' ' * tab_size)
+            return x._text
+
+        return [x for x in self._after if not x._is_context and regex.search(get_text(x, tab_size))]
+
+
+class Patch:
+    def __init__(self, raw):
+        self._hunks = []
+        self._parse(raw)
+
+    def _parse(self, raw):
+        re_file_header = re.compile(r'^diff --git (\S+)')
+        re_hunk_header = re.compile(r'^@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
+
+        current_path = None
+        current_hunk = None
+
+        for line in raw.split('\n'):
+            m = re_file_header.match(line)
+            if m:
+                current_path = m.group(1)
+                current_hunk = None
+                continue
+
+            m = re_hunk_header.match(line)
+            if m:
+                i = int(m.group(1))
+                d = int(m.group(3))
+                current_hunk = Hunk(current_path, i, d)
+                self._hunks.append(current_hunk)
+                continue
+
+            if current_hunk and len(line) > 0:
+                ch = line[0]
+                line = line[1:]
+                if ch == '+':
+                    current_hunk.add_insertion(line)
+                elif ch == '-':
+                    current_hunk.add_deletion(line)
+                else:
+                    current_hunk.add_context(line)
+
+    def grep(self, pattern, pattern_filename, tab_size):
+        regex = re.compile(pattern)
+        regex_filename = re.compile(pattern_filename)
+        lists = map(lambda h: h.grep(regex, regex_filename, tab_size), self._hunks)
+        return [x for y in lists for x in y]
+
+
+def _get_diff_against_ref():
+    # See .git/hooks/pre-commit.sample to understand the following magic.
+    cmd = 'git rev-parse --verify HEAD'
+    retval = subprocess.call(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return 'HEAD' if retval == 0 else '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
+def _create_patch(ref):
+    cmd = 'git diff-index -p --no-prefix --cached {}'.format(ref)
+    raw = subprocess.check_output(shlex.split(cmd))
+    return Patch(raw.decode())
+
+def _verify_patch(patch, label, pattern, pattern_filename='.*', tab_size=None):
+    matches = patch.grep(pattern, pattern_filename, tab_size)
+    for line in matches:
+        print('{}:{}: {}\n{}'.format(line._path, line._lineno, label, line._text))
+    return len(matches)
+
+def main():
+    against = _get_diff_against_ref()
+    patch = _create_patch(against)
+    retval = 0
+    retval += _verify_patch(patch, 'trailing whitespace', r'\s+$')
+    retval += _verify_patch(patch, 'space before tab in indent', r'^\t* +\t')
+    retval += _verify_patch(patch, 'line length exceeds 80 chars', r'.{80}', pattern_filename='^.*\.[ch]$', tab_size=8)
+    retval += _verify_patch(patch, 'unhandled FIXME', r'FIXME')
+
+    sys.exit(retval)
+
+if __name__ == '__main__':
+    main()
