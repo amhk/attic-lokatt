@@ -8,3 +8,4 @@ common/lib/test-dict
 common/lib/test-ring-buffer
 common/lib/test-strbuf
 tags
+venv
