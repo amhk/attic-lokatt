@@ -5,7 +5,9 @@ import shlex
 import subprocess
 import sys
 
+
 class Line:
+
     def __init__(self, path, lineno, is_context, text):
         self._path = path
         self._lineno = lineno
@@ -14,6 +16,7 @@ class Line:
 
 
 class Hunk:
+
     def __init__(self, path, ins_lineno, del_lineno):
         self._path = path
         self._ins_lineno = ins_lineno
@@ -25,12 +28,12 @@ class Hunk:
         self.add_deletion(text, True)
         self.add_insertion(text, True)
 
-    def add_deletion(self, text, is_context = False):
+    def add_deletion(self, text, is_context=False):
         line = Line(self._path, self._ins_lineno, is_context, text)
         self._del_lineno += 1
         self._before.append(line)
 
-    def add_insertion(self, text, is_context = False):
+    def add_insertion(self, text, is_context=False):
         line = Line(self._path, self._ins_lineno, is_context, text)
         self._ins_lineno += 1
         self._after.append(line)
@@ -38,6 +41,7 @@ class Hunk:
     def grep(self, regex, regex_filename, tab_size):
         if len(self._after) == 0 or not regex_filename.search(self._after[0]._path):
             return []
+
         def get_text(x, tab_size):
             if tab_size is not None:
                 return x._text.replace('\t', ' ' * tab_size)
@@ -47,6 +51,7 @@ class Hunk:
 
 
 class Patch:
+
     def __init__(self, raw):
         self._hunks = []
         self._parse(raw.decode())
