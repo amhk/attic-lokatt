@@ -70,6 +70,7 @@ endif
 test-%: test-%.o test.o $(LIBS)
 	$(QUIET_LD)$(LD) $(LDFLAGS) -o $@ $^
 
+.PHONY: all
 all: $(tags) $(binary) $(test_binaries)
 
 $(LIBS): $(liblokatt_objects)
@@ -78,14 +79,17 @@ $(LIBS): $(liblokatt_objects)
 $(binary): $(binary).o $(LIBS)
 	$(QUIET_LD)$(LD) $(LDFLAGS) -o $@ $^
 
+.PHONY: analyze
 analyze: $(plists)
 
 $(tags): $(sources)
 	$(QUIET_TAGS)ctags --fields=+l $(sources)
 
+.PHONY: test
 test: $(test_binaries)
 	$(QUIET_TEST)./run-tests.py $(TESTFLAGS) $(T)
 
+.PHONY: clean
 clean:
 	$(RM) $(deps)
 	$(RM) $(objects)
