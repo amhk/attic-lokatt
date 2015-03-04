@@ -53,6 +53,7 @@ class Hunk:
 class Patch:
 
     def __init__(self, raw):
+        self._paths = set()
         self._hunks = []
         self._parse(raw.decode())
         self.raw = raw
@@ -69,6 +70,7 @@ class Patch:
             if m:
                 current_path = m.group(1)
                 current_hunk = None
+                self._paths.add(current_path)
                 continue
 
             m = re_hunk_header.match(line)
@@ -95,6 +97,9 @@ class Patch:
         lists = map(lambda h: h.grep(regex, regex_filename, tab_size), self._hunks)
         return [x for y in lists for x in y]
 
+    def contains_python_code(self):
+        return len([x for x in self._paths if x.endswith('.py')]) > 0
+
 
 def _get_diff_against_ref():
     # See .git/hooks/pre-commit.sample to understand the following magic.
@@ -114,6 +119,8 @@ def _verify_patch(patch, label, pattern, pattern_filename='.*', tab_size=None):
     return len(matches)
 
 def _verify_pep8(patch):
+    if not patch.contains_python_code():
+        return 0
     cmd = 'pep8 --diff --show-source --format "%(path)s:%(row)s: PEP8:%(code)s %(text)s"'
     p = subprocess.Popen(shlex.split(cmd), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     output, _ = p.communicate(input=patch.raw)
