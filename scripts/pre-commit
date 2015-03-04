@@ -5,7 +5,9 @@ import shlex
 import subprocess
 import sys
 
+
 class Line:
+
     def __init__(self, path, lineno, is_context, text):
         self._path = path
         self._lineno = lineno
@@ -14,6 +16,7 @@ class Line:
 
 
 class Hunk:
+
     def __init__(self, path, ins_lineno, del_lineno):
         self._path = path
         self._ins_lineno = ins_lineno
@@ -25,12 +28,12 @@ class Hunk:
         self.add_deletion(text, True)
         self.add_insertion(text, True)
 
-    def add_deletion(self, text, is_context = False):
+    def add_deletion(self, text, is_context=False):
         line = Line(self._path, self._ins_lineno, is_context, text)
         self._del_lineno += 1
         self._before.append(line)
 
-    def add_insertion(self, text, is_context = False):
+    def add_insertion(self, text, is_context=False):
         line = Line(self._path, self._ins_lineno, is_context, text)
         self._ins_lineno += 1
         self._after.append(line)
@@ -38,6 +41,7 @@ class Hunk:
     def grep(self, regex, regex_filename, tab_size):
         if len(self._after) == 0 or not regex_filename.search(self._after[0]._path):
             return []
+
         def get_text(x, tab_size):
             if tab_size is not None:
                 return x._text.replace('\t', ' ' * tab_size)
@@ -47,9 +51,11 @@ class Hunk:
 
 
 class Patch:
+
     def __init__(self, raw):
         self._hunks = []
-        self._parse(raw)
+        self._parse(raw.decode())
+        self.raw = raw
 
     def _parse(self, raw):
         re_file_header = re.compile(r'^diff --git (\S+)')
@@ -99,13 +105,22 @@ def _get_diff_against_ref():
 def _create_patch(ref):
     cmd = 'git diff-index -p --no-prefix --cached {}'.format(ref)
     raw = subprocess.check_output(shlex.split(cmd))
-    return Patch(raw.decode())
+    return Patch(raw)
 
 def _verify_patch(patch, label, pattern, pattern_filename='.*', tab_size=None):
     matches = patch.grep(pattern, pattern_filename, tab_size)
     for line in matches:
         print('{}:{}: {}\n{}'.format(line._path, line._lineno, label, line._text))
     return len(matches)
+
+def _verify_pep8(patch):
+    cmd = 'pep8 --diff --show-source --format "%(path)s:%(row)s: PEP8:%(code)s %(text)s"'
+    p = subprocess.Popen(shlex.split(cmd), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    output, _ = p.communicate(input=patch.raw)
+    if (p.returncode > 0):
+        for line in output.decode().split('\n'):
+            print(line)
+    return p.returncode
 
 def main():
     against = _get_diff_against_ref()
@@ -115,6 +130,7 @@ def main():
     retval += _verify_patch(patch, 'space before tab in indent', r'^\t* +\t')
     retval += _verify_patch(patch, 'line length exceeds 80 chars', r'.{80}', pattern_filename='^.*\.[ch]$', tab_size=8)
     retval += _verify_patch(patch, 'unhandled FIXME', r'FIXME')
+    retval += _verify_pep8(patch)
 
     sys.exit(retval)
 

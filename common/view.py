@@ -3,6 +3,7 @@ from common.liblokatt import Message
 
 
 class View(metaclass=ABCMeta):
+
     '''
     Base class for views. This is the main interface
     to report events to the UI layer
@@ -21,7 +22,7 @@ class View(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def on_message(self, m:Message):
+    def on_message(self, m: Message):
         '''
         Callback that is called for all new logcat messages
         :param m:Message the new message

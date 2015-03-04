@@ -11,6 +11,7 @@ ANSI_RED = '\033[31m'
 ANSI_YELLOW = '\033[33m'
 ANSI_RESET = '\033[0m'
 
+
 def _print_stack(stack):
     def get(root, name, default):
         element = root.find(name)
@@ -32,6 +33,7 @@ def _print_stack(stack):
 
         print '        {} {:10s} {:20s} {}'.format(prefix, ip, func, location)
 
+
 def _print_error(error):
     kind = error.find('kind')
     print '{}==== {} ===={}'.format(ANSI_RED, kind.text, ANSI_RESET)
@@ -43,6 +45,7 @@ def _print_error(error):
             print '    {}{}{}'.format(ANSI_YELLOW, child.find('text').text, ANSI_RESET)
         elif child.tag == 'stack':
             _print_stack(child)
+
 
 def _parse_valgrind_output(raw):
     retval = 0
@@ -66,6 +69,7 @@ def _parse_valgrind_output(raw):
         errors_seen.add(sha1)
         _print_error(root)
         retval += 1
+
 
 def _execute_test(executable, testcase='', valgrind=False):
     env = {'LD_LIBRARY_PATH': os.path.dirname(executable)}

@@ -21,7 +21,8 @@ COLORS = [Fore.RESET,   # Unknown
           Fore.RED,     # Fatal
           Fore.RESET]   # Silent
 
-def print_message(m:Message):
+
+def print_message(m: Message):
     time = datetime.datetime.utcfromtimestamp(m.sec)
     # Fix the with of pname to 24.
     # Add trailing spaces or remove abundant chars from the left
@@ -35,6 +36,7 @@ def print_message(m:Message):
     text = text + Fore.RESET
     print("{:%m-%d %H:%M:%S} {:5} {:5} {} {}: {}".format(time, m.pid, m.tid, pname, tag, text))
 
+
 class Cli(View):
 
     '''
@@ -47,9 +49,10 @@ class Cli(View):
     def show(self):
         # Event for preventing the main thread from finishing early
         logcat_done = threading.Event()
-        self.logcat.start() # Start the logcat session
+        self.logcat.start()  # Start the logcat session
         channel = self.logcat.create_channel(message_callback=print_message)
         channel.open()
+
         def signal_handler(signal, frame):
             channel.close()
             self.logcat.stop()

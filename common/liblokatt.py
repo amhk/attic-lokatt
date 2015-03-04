@@ -99,7 +99,7 @@ class LogcatChannel():
             message_callback(m[0])
 
         CBFUNC = CFUNCTYPE(None, ctypes.POINTER(Message))
-        return CBFUNC(callback);
+        return CBFUNC(callback)
 
     def open(self):
         '''
