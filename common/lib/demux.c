@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +37,7 @@ static void lookup_process_name(const struct lokatt_session *s, uint32_t pid,
 	struct strbuf sb;
 	char cmdline[128];
 
-	sprintf(cmdline, "cat /proc/%zd/cmdline", pid);
+	sprintf(cmdline, "cat /proc/%" PRIu32 "/cmdline", pid);
 	strbuf_init(&sb, size);
 	memset(buf, 0, size);
 	if (adb_shell(s->adb, cmdline, &sb) == 0) {
