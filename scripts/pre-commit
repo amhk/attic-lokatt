@@ -135,7 +135,7 @@ def main():
     retval = 0
     retval += _verify_patch(patch, 'trailing whitespace', r'\s+$')
     retval += _verify_patch(patch, 'space before tab in indent', r'^\t* +\t')
-    retval += _verify_patch(patch, 'line length exceeds 80 chars', r'.{80}', pattern_filename='^.*\.[ch]$', tab_size=8)
+    retval += _verify_patch(patch, 'line length exceeds 80 chars', r'.{81}', pattern_filename='^.*\.[ch]$', tab_size=8)
     retval += _verify_patch(patch, 'unhandled FIXME', r'FIXME')
     retval += _verify_pep8(patch)
 
