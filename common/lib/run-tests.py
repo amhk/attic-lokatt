@@ -71,15 +71,15 @@ def _parse_valgrind_output(raw):
         retval += 1
 
 
-def _execute_test(executable, testcase='', valgrind=False):
-    env = {'LD_LIBRARY_PATH': os.path.dirname(executable)}
-
-    if not valgrind:
-        cmdline = '{} {}'.format(executable, testcase)
-        return subprocess.call(shlex.split(cmdline), env=env)
-
+def _execute_valgrind(executable, testcase, env):
     pipe_r, pipe_w = os.pipe()
-    cmdline = 'valgrind --trace-children=yes --leak-check=full --track-origins=yes --suppressions=adb.supp --xml=yes --xml-fd={} {} {}'.format(pipe_w, executable, testcase)
+    cmdline = '''valgrind
+                    --trace-children=yes
+                    --leak-check=full
+                    --track-origins=yes
+                    --suppressions=adb.supp
+                    --xml=yes
+                    --xml-fd={} {} {}'''.format(pipe_w, executable, testcase)
     retval = subprocess.call(shlex.split(cmdline), env=env)
     os.close(pipe_w)
     # pipe_r will be closed automatically at the end of the 'with' block
@@ -93,9 +93,23 @@ def _execute_test(executable, testcase='', valgrind=False):
         retval += _parse_valgrind_output('\n'.join(xml))
     return retval
 
+
+def _execute_gdb(executable, testcase, env):
+    cmdline = 'gdb --ex "set follow-fork-mode child" --args {} {}'.format(executable, testcase)
+    return subprocess.call(shlex.split(cmdline), env=env)
+
+
+def _execute_test(executable, testcase, env):
+    cmdline = '{} {}'.format(executable, testcase)
+    return subprocess.call(shlex.split(cmdline), env=env)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--valgrind', action='store_true', default=False, help='run tests under Valgrind memcheck')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--valgrind', action='store_true', default=False,
+                       help='run tests under Valgrind memcheck')
+    group.add_argument('--gdb', action='store_true', default=False, help='run tests under gdb')
     parser.add_argument('testspec', nargs='*', help='test specification: executable[:testcase]')
     args = parser.parse_args()
 
@@ -106,7 +120,15 @@ def main():
         else:
             executable = arg
             testcase = ''
-        retval += _execute_test(os.path.abspath(executable), testcase, args.valgrind)
+        env = {'LD_LIBRARY_PATH': os.path.dirname(os.path.abspath(executable))}
+
+        if args.valgrind:
+            retval += _execute_valgrind(os.path.abspath(executable), testcase, env)
+        elif args.gdb:
+            retval += _execute_gdb(os.path.abspath(executable), testcase, env)
+        else:
+            retval += _execute_test(os.path.abspath(executable), testcase, env)
+
     sys.exit(retval)
 
 if __name__ == '__main__':

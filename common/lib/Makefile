@@ -54,6 +54,10 @@ ifdef VALGRIND
 	TESTFLAGS := --valgrind
 endif
 
+ifdef GDB
+	TESTFLAGS := --gdb
+endif
+
 ifndef T
 	T := $(test_binaries)
 endif
