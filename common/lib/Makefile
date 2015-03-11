@@ -4,6 +4,7 @@ liblokatt_objects += bridge.o
 liblokatt_objects += demux.o
 liblokatt_objects += dict.o
 liblokatt_objects += error.o
+liblokatt_objects += filter-lexer.o
 liblokatt_objects += filter.o
 liblokatt_objects += ring-buffer.o
 liblokatt_objects += stack.o
@@ -23,6 +24,7 @@ headers :=
 headers += adb.h
 headers += bridge.h
 headers += error.h
+headers += filter-lexer.h
 headers += filter.h
 headers += lokatt.h
 headers += ring-buffer.h
@@ -36,6 +38,9 @@ deps := $(objects:.o=.d)
 sources := $(objects:.o=.c) $(headers)
 plists := $(objects:.o=.plist)
 tags := tags
+
+LEX := flex
+LEXFLAGS :=
 
 CC := clang
 CFLAGS := -Wall -Wextra -pthread -ggdb -O0 -fPIC
@@ -53,6 +58,7 @@ ifndef V
 	QUIET_ANALYZE = @echo "    ANALYZE $@";
 	QUIET_TAGS = @echo "    TAGS";
 	QUIET_TEST = @echo "    TEST";
+	QUIET_LEX = @echo "    LEX $@";
 endif
 
 ifdef VALGRIND
@@ -67,8 +73,11 @@ ifndef T
 	T := $(test_binaries)
 endif
 
+%.c: %.lex
+	$(QUIET_LEX)$(LEX) $(LEXFLAGS) $<
+
 %.d: %.c
-	$(QUIET_DEP)$(CC) $(CFLAGS) -MM $< | sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
+	$(QUIET_DEP)$(CC) $(CFLAGS) -MM -MG $< | sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' > $@
 
 %.o: %.c
 	$(QUIET_CC)$(CC) $(CFLAGS) -c -o $@ $<
@@ -81,6 +90,7 @@ test-%: test-%.o test.o $(LIBS)
 
 .PHONY: all
 all: $(tags) $(binary) $(test_binaries)
+
 
 $(LIBS): $(liblokatt_objects)
 	$(QUIET_LD)$(LD) $(LDFLAGS) -shared -o $@ $^
@@ -101,6 +111,7 @@ test: $(test_binaries)
 .PHONY: clean
 clean:
 	$(RM) $(deps)
+	$(RM) filter-lexer.c filter-lexer.h
 	$(RM) $(objects)
 	$(RM) $(LIBS)
 	$(RM) $(plists)

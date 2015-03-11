@@ -1,6 +1,8 @@
 *.d
 *.o
 *.plist
+common/lib/filter-lexer.c
+common/lib/filter-lexer.h
 common/lib/liblokatt.so
 common/lib/lokatt
 common/lib/test-adb
