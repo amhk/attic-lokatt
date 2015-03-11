@@ -3,6 +3,7 @@
 
 #include "error.h"
 #include "filter.h"
+#include "lokatt.h"
 #include "strbuf.h"
 #include "test.h"
 
@@ -277,6 +278,251 @@ TEST(lexer_invalid_input)
 	/* single = is not a valid op */
 	retval = filter_tokenize("pid=1234", &tokens, &count);
 	ASSERT_EQ(retval, 4);
+}
+
+TEST(rpn_input_from_hardcoded_tokens)
+{
+	struct token tokens[3];
+	struct token **tokens_rpn;
+	size_t count_rpn;
+	int retval;
+
+	tokens[0].type = TOKEN_KEY_PID;
+
+	tokens[1].type = TOKEN_OP_EQ;
+
+	tokens[2].type = TOKEN_VALUE_INT;
+	tokens[2].value_int = 1234;
+
+	retval = filter_tokens_as_rpn(tokens, 3, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 3);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+
+	free(tokens_rpn);
+}
+
+TEST(rpn_input_from_lexer)
+{
+	struct token *tokens, **tokens_rpn;
+	size_t count, count_rpn;
+	int retval;
+
+	/* key == int */
+	retval = filter_tokenize("pid == 1234", &tokens, &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 3);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 3);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+
+	filter_free_tokens(tokens, count);
+	free(tokens_rpn);
+
+	/* key == int && key == int */
+	retval = filter_tokenize("pid == 1234 && tid != 1234", &tokens, &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 7);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 7);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+	ASSERT_EQ(tokens_rpn[3]->type, TOKEN_KEY_TID);
+	ASSERT_EQ(tokens_rpn[4]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[5]->type, TOKEN_OP_NE);
+	ASSERT_EQ(tokens_rpn[6]->type, TOKEN_OP_AND);
+
+	filter_free_tokens(tokens, count);
+	free(tokens_rpn);
+
+	/* precedence: key == int && key == int || key == int */
+	retval = filter_tokenize("pid == 1 && tid != 2 || sec < 3", &tokens,
+				 &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 11);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 11);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+	ASSERT_EQ(tokens_rpn[3]->type, TOKEN_KEY_TID);
+	ASSERT_EQ(tokens_rpn[4]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[5]->type, TOKEN_OP_NE);
+	ASSERT_EQ(tokens_rpn[6]->type, TOKEN_OP_AND);
+	ASSERT_EQ(tokens_rpn[7]->type, TOKEN_KEY_SEC);
+	ASSERT_EQ(tokens_rpn[8]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[9]->type, TOKEN_OP_LT);
+	ASSERT_EQ(tokens_rpn[10]->type, TOKEN_OP_OR);
+
+	filter_free_tokens(tokens, count);
+	free(tokens_rpn);
+
+	/* precedence: key == int || key == int && key == int */
+	retval = filter_tokenize("pid == 1 || tid != 2 && sec < 3", &tokens,
+				 &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 11);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 11);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+	ASSERT_EQ(tokens_rpn[3]->type, TOKEN_KEY_TID);
+	ASSERT_EQ(tokens_rpn[4]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[5]->type, TOKEN_OP_NE);
+	ASSERT_EQ(tokens_rpn[6]->type, TOKEN_KEY_SEC);
+	ASSERT_EQ(tokens_rpn[7]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[8]->type, TOKEN_OP_LT);
+	ASSERT_EQ(tokens_rpn[9]->type, TOKEN_OP_AND);
+	ASSERT_EQ(tokens_rpn[10]->type, TOKEN_OP_OR);
+
+	filter_free_tokens(tokens, count);
+	free(tokens_rpn);
+
+	/* parenthesis: (key == int || key == int) && key == int */
+	retval = filter_tokenize("(pid == 1 || tid != 2) && sec < 3", &tokens,
+				 &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 13);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count_rpn, 11);
+	ASSERT_EQ(tokens_rpn[0]->type, TOKEN_KEY_PID);
+	ASSERT_EQ(tokens_rpn[1]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[2]->type, TOKEN_OP_EQ);
+	ASSERT_EQ(tokens_rpn[3]->type, TOKEN_KEY_TID);
+	ASSERT_EQ(tokens_rpn[4]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[5]->type, TOKEN_OP_NE);
+	ASSERT_EQ(tokens_rpn[6]->type, TOKEN_OP_OR);
+	ASSERT_EQ(tokens_rpn[7]->type, TOKEN_KEY_SEC);
+	ASSERT_EQ(tokens_rpn[8]->type, TOKEN_VALUE_INT);
+	ASSERT_EQ(tokens_rpn[9]->type, TOKEN_OP_LT);
+	ASSERT_EQ(tokens_rpn[10]->type, TOKEN_OP_AND);
+
+	filter_free_tokens(tokens, count);
+	free(tokens_rpn);
+}
+
+TEST(rpn_invalid_input)
+{
+	struct token *tokens, **tokens_rpn;
+	size_t count, count_rpn;
+	int retval;
+
+	/* mismatched parenthesis */
+	retval = filter_tokenize("(pid == 1234", &tokens, &count);
+	ASSERT_EQ(retval, 0);
+	ASSERT_EQ(count, 4);
+
+	retval = filter_tokens_as_rpn(tokens, count, &tokens_rpn, &count_rpn);
+	ASSERT_NE(retval, 0);
+	filter_free_tokens(tokens, count);
+}
+
+int oneshot(const char *spec, const struct lokatt_message *msg)
+{
+	int retval;
+	struct filter *f;
+
+	f = filter_create(spec);
+	ASSERT_NE(f, NULL);
+	retval = filter_match(f, msg);
+	filter_destroy(f);
+
+	return retval;
+}
+
+TEST(filter_valid_input)
+{
+	const struct lokatt_message msg = {
+		.pid = 1,
+		.tid = 2,
+		.sec = 3,
+		.nsec = 4,
+		.level = LEVEL_WARNING,
+		.tag = "PackageManagerService",
+		.text = "This is the text.",
+		.pname = "system_server",
+	};
+
+	/* integer values */
+	ASSERT_EQ(oneshot("pid == 1", &msg), 0);
+	ASSERT_EQ(oneshot("tid == 2", &msg), 0);
+	ASSERT_EQ(oneshot("sec == 3", &msg), 0);
+	ASSERT_EQ(oneshot("nsec == 4", &msg), 0);
+	ASSERT_EQ(oneshot("level == 5", &msg), 0);
+
+	/* string values */
+	ASSERT_EQ(oneshot("tag == \"PackageManagerService\"", &msg), 0);
+	ASSERT_EQ(oneshot("text == \"This is the text.\"", &msg), 0);
+	ASSERT_EQ(oneshot("pname == \"system_server\"", &msg), 0);
+
+	/* integer operations */
+	ASSERT_EQ(oneshot("pid == 1", &msg), 0);
+	ASSERT_GT(oneshot("pid == 10", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid != 0", &msg), 0);
+	ASSERT_GT(oneshot("pid != 1", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid < 2", &msg), 0);
+	ASSERT_GT(oneshot("pid < 1", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid <= 2", &msg), 0);
+	ASSERT_EQ(oneshot("pid <= 1", &msg), 0);
+	ASSERT_GT(oneshot("pid <= 0", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid > 0", &msg), 0);
+	ASSERT_GT(oneshot("pid > 1", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid >= 0", &msg), 0);
+	ASSERT_EQ(oneshot("pid >= 1", &msg), 0);
+	ASSERT_GT(oneshot("pid >= 2", &msg), 0);
+
+	/* string operations */
+	ASSERT_EQ(oneshot("tag == \"PackageManagerService\"", &msg), 0);
+	ASSERT_GT(oneshot("tag == \"foobar\"", &msg), 0);
+
+	ASSERT_EQ(oneshot("tag != \"foobar\"", &msg), 0);
+	ASSERT_GT(oneshot("tag != \"PackageManagerService\"", &msg), 0);
+
+	/* TODO: add tests for =~ and !~ */
+
+	/* logical operations */
+	ASSERT_EQ(oneshot("pid == 1 && pname == \"system_server\"", &msg), 0);
+	ASSERT_NE(oneshot("pid == 1 && pname == \"foobar\"", &msg), 0);
+	ASSERT_NE(oneshot("pid == 0 && pname == \"system_server\"", &msg), 0);
+
+	ASSERT_EQ(oneshot("pid == 1 || pname == \"foobar\"", &msg), 0);
+	ASSERT_EQ(oneshot("pid == 0 || pname == \"system_server\"", &msg), 0);
+	ASSERT_NE(oneshot("pid == 0 || pname == \"foobar\"", &msg), 0);
+}
+
+TEST(filter_invalid_input)
+{
+	struct filter *f;
+
+	f = filter_create("tag tag tag tag");
+	ASSERT_EQ(f, NULL);
+
+	f = filter_create("1234 == pid");
+	ASSERT_EQ(f, NULL);
+
+	f = filter_create("(pid == 1 || tid != 2 && sec < 3");
+	ASSERT_EQ(f, NULL);
 }
 
 int main(int argc, char **argv)
