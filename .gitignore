@@ -6,6 +6,7 @@ common/lib/lokatt
 common/lib/test-adb
 common/lib/test-dict
 common/lib/test-ring-buffer
+common/lib/test-stack
 common/lib/test-strbuf
 tags
 venv

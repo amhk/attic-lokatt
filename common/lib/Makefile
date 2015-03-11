@@ -5,6 +5,7 @@ liblokatt_objects += demux.o
 liblokatt_objects += dict.o
 liblokatt_objects += error.o
 liblokatt_objects += ring-buffer.o
+liblokatt_objects += stack.o
 liblokatt_objects += strbuf.o
 
 binary := lokatt
@@ -13,6 +14,7 @@ test_binaries :=
 test_binaries += test-adb
 test_binaries += test-dict
 test_binaries += test-ring-buffer
+test_binaries += test-stack
 test_binaries += test-strbuf
 
 headers :=
