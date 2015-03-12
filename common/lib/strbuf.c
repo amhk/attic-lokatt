@@ -62,13 +62,17 @@ void strbuf_addstr(struct strbuf *sb, const char *str)
 	strbuf_add(sb, str, strlen(str));
 }
 
-void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
+void strbuf_addch(struct strbuf *sb, const char ch)
 {
-	va_list ap, ap_cp;
+	strbuf_add(sb, &ch, 1);
+}
+
+void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap)
+{
+	va_list ap_cp;
 	size_t required;
 	size_t available = sb->alloc_size - sb->str_size - 1;
 
-	va_start(ap, fmt);
 	va_copy(ap_cp, ap);
 
 	required = vsnprintf(sb->buf + sb->str_size, available, fmt, ap_cp);
@@ -81,5 +85,13 @@ void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
 	set_str_size(sb, sb->str_size + required);
 
 	va_end(ap_cp);
+}
+
+void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	strbuf_vaddf(sb, fmt, ap);
 	va_end(ap);
 }

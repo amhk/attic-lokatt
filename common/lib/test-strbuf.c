@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <string.h>
 
 #include "error.h"
@@ -25,6 +26,15 @@ TEST(grow)
 	strbuf_destroy(&sb);
 }
 
+static void f(struct strbuf *sb, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	strbuf_vaddf(sb, fmt, ap);
+	va_end(ap);
+}
+
 TEST(add_pre_allocated)
 {
 	struct strbuf sb;
@@ -40,6 +50,12 @@ TEST(add_pre_allocated)
 
 	strbuf_addf(&sb, " %d '%6s'", 1234, "abc");
 	ASSERT_STRBUF_EQ(&sb, "foobar 1234 '   abc'");
+
+	f(&sb, " %d 0x%x", 42, 42);
+	ASSERT_STRBUF_EQ(&sb, "foobar 1234 '   abc' 42 0x2a");
+
+	strbuf_addch(&sb, '!');
+	ASSERT_STRBUF_EQ(&sb, "foobar 1234 '   abc' 42 0x2a!");
 
 	strbuf_destroy(&sb);
 }
