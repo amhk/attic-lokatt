@@ -1,6 +1,17 @@
+# Silence the log by setting _S=1
+_log()
+{
+
+	if [[ -z $_S ]]; then
+		echo "$@"
+	fi
+}
+
 _lokatt_gettop()
 {
-	T=$(git rev-parse --show-toplevel)
+	if [[ -z ${T} ]]; then
+		T=$(git rev-parse --show-toplevel)
+	fi
 
 	if [[ -z ${T} ]]; then
 		echo "error: failed to get top of lokatt git"
@@ -18,14 +29,14 @@ _lokatt_activate_venv()
 		echo "hint: run lokatt_setup" >&2
 		return 1
 	fi
-	echo "Activate python environment"
+	_log "Activate python environment"
 	source ${T}/venv/bin/activate
 	return $?
 }
 
 _lokatt_create_venv()
 {
-	echo "creating virtual environment..."
+	_log "creating virtual environment..."
 	${PYVENV} --without-pip venv
 	# TODO: Revert the patch that added this workaround.
 	# This is a workaround for a bug in pyvenv-3.4 in Debian and Ubuntu
@@ -44,7 +55,7 @@ _lokatt_create_venv()
 
 _lokatt_install_dependencies()
 {
-	echo "Ensure python dependencies"
+	_log "Ensure python dependencies"
 	pip install -q -r ${T}/scripts/dependencies.txt
 	return $?
 }
