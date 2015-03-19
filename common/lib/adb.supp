@@ -1,9 +1,0 @@
-{
-   <adb_get_state>
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   fun:adb_query
-   fun:adb_commandline
-   fun:main
-}
