@@ -3,7 +3,7 @@ all: liblokatt t cli
 
 .PHONY: test
 test: liblokatt t
-	@LD_LIBRARY_PATH=out/liblokatt out/t/test-lokatt
+	@LD_LIBRARY_PATH=out/liblokatt out/t/test-lokatt $(T)
 
 .PHONY: clean
 clean:
