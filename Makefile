@@ -5,6 +5,10 @@ all: liblokatt t cli
 test: liblokatt t
 	@LD_LIBRARY_PATH=out/liblokatt out/t/test-lokatt $(T)
 
+.PHONY: lokatt
+lokatt: liblokatt cli
+	@LD_LIBRARY_PATH=out/liblokatt out/cli/lokatt
+
 .PHONY: clean
 clean:
 	$(RM) -r out
