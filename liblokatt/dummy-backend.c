@@ -44,10 +44,11 @@ static const char *fortunes[32] = {
 	"You love your home and want it to be beautiful.",
 };
 
-static void init(void **userdata)
+void *create_dummy_backend()
 {
-	*userdata = malloc(sizeof(uint32_t));
+	void *userdata = malloc(sizeof(uint32_t));
 	srand(time(NULL));
+	return userdata;
 }
 
 static void destroy(void *userdata)
@@ -78,7 +79,6 @@ static int pid_to_name(void *userdata, uint32_t pid, char out[128])
 }
 
 struct backend_ops dummy_backend_ops = {
-	.init = init,
 	.destroy = destroy,
 	.next_logcat_message = next_logcat_message,
 	.pid_to_name = pid_to_name,

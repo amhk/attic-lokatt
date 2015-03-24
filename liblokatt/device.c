@@ -66,22 +66,48 @@ static void init_pthreads()
 	pthread_key_create(&key, NULL);
 }
 
-struct lokatt_device *lokatt_open_device(const char *serialno)
+static struct lokatt_device *create_device(void *initialized_backend,
+					   struct backend_ops *ops)
 {
 	struct lokatt_device *dev;
 
-	(void)serialno;
 	pthread_once(&key_once, init_pthreads);
 
 	dev = calloc(1, sizeof(*dev));
-	dev->ops = &dummy_backend_ops;
-	dev->ops->init(&dev->backend);
+	dev->backend = initialized_backend;
+	dev->ops = ops;
 	index_init(&dev->index);
 	pthread_rwlock_init(&dev->lock, NULL);
 	pthread_cond_init(&dev->cond, NULL);
 	pthread_mutex_init(&dev->mutex, NULL);
 	pthread_create(&dev->logcat_thread, NULL, logcat_thread_main, dev);
 
+	return dev;
+}
+
+struct lokatt_device *lokatt_open_adb_device(const char *serialno)
+{
+	struct lokatt_device *dev;
+	void *backend = create_adb_backend(serialno);
+	if (!backend)
+		return NULL;
+	dev = create_device(backend, &adb_backend_ops);
+	if (!dev) {
+		adb_backend_ops.destroy(backend);
+	}
+	return dev;
+}
+
+struct lokatt_device *lokatt_open_dummy_device()
+{
+	struct lokatt_device *dev;
+	void *backend = create_dummy_backend();
+	if (!backend)
+		return NULL;
+	dev = create_device(backend, &dummy_backend_ops);
+	if (!dev) {
+		dummy_backend_ops.destroy(backend);
+	}
 	return dev;
 }
 
