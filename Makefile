@@ -1,18 +1,23 @@
-# Naming all PHONY targets
-.PHONY: all clean cclean test ctest pytest
+.PHONY: all
+all: liblokatt t cli
 
-all:
-	$(MAKE) -C common/lib all
+.PHONY: test
+test: liblokatt t
+	@LD_LIBRARY_PATH=out/liblokatt out/t/test-lokatt $(T)
 
-cclean:
-	$(MAKE) -C common/lib clean
+.PHONY: lokatt
+lokatt: liblokatt cli
+	@LD_LIBRARY_PATH=out/liblokatt out/cli/lokatt
 
-ctest:
-	$(MAKE) -C common/lib test
+.PHONY: clean
+clean:
+	$(RM) -r out
 
-#TODO: create a test suite for python
-pytest:
+include clean.mk
+include liblokatt.mk
 
-test: pytest ctest
+include clean.mk
+include t.mk
 
-clean: cclean
+include clean.mk
+include cli.mk

@@ -6,7 +6,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "error.h"
+#include "liblokatt/error.h"
+
 #include "test.h"
 
 #define ANSI_GREEN "\033[32m"
@@ -31,7 +32,7 @@ static void run_single_test(const struct test *t, int *passed, int *failed)
 	siginfo_t info;
 	pid_t pid;
 
-	cprintf(ANSI_RESET, "[ RUN      ] %s\n", t->name);
+	cprintf(ANSI_RESET, "[ RUN      ] %s/%s\n", t->category, t->name);
 	pid = fork();
 	switch (pid) {
 		case -1:
@@ -47,65 +48,38 @@ static void run_single_test(const struct test *t, int *passed, int *failed)
 		die("waitid");
 	if (info.si_code == CLD_EXITED && info.si_status == EXIT_SUCCESS) {
 		(*passed)++;
-		cprintf(ANSI_RESET, "[       OK ] %s\n", t->name);
+		cprintf(ANSI_RESET, "[       OK ] %s/%s\n",
+			t->category, t->name);
 	} else if (info.si_code == CLD_EXITED &&
 		   info.si_status == EXIT_SKIPPED) {
-		cprintf(ANSI_YELLOW, "[  SKIPPED ] %s\n", t->name);
+		cprintf(ANSI_YELLOW, "[  SKIPPED ] %s/%s\n",
+			t->category, t->name);
 	} else {
 		(*failed)++;
-		cprintf(ANSI_RED, "[     FAIL ] %s\n", t->name);
+		cprintf(ANSI_RED, "[     FAIL ] %s/%s\n", t->category, t->name);
 	}
 }
 
-static void run_all_tests(int *passed, int *failed)
+static void run_all_tests(const char *category, const char *name,
+			  int *passed, int *failed)
 {
 	const struct test *t;
 
 	for (t = &__start_test_section; t < &__stop_test_section; t++) {
-		run_single_test(t, passed, failed);
+		int run = 0;
+
+		if (!category)
+			run = 1;
+		else if (!strcmp(category, t->category))
+			run = !name || !strcmp(name, t->name);
+
+		if (run)
+			run_single_test(t, passed, failed);
 	}
 }
 
-static void list_tests()
+static void print_results(int passed, int failed)
 {
-	const struct test *t;
-
-	for (t = &__start_test_section; t < &__stop_test_section; t++) {
-		printf("%s\n", t->name);
-	}
-}
-
-static const struct test *find_test(const char *name)
-{
-	const struct test *t;
-
-	for (t = &__start_test_section; t < &__stop_test_section; t++) {
-		if (!strcmp(name, t->name))
-			return t;
-	}
-
-	return NULL;
-}
-
-int test_main(int argc, char **argv)
-{
-	int passed = 0, failed = 0;
-	if (argc > 1 && !strcmp(argv[1], "--list")) {
-		list_tests();
-		return 0;
-	}
-
-	if (argc > 1) {
-		const struct test *t = find_test(argv[1]);
-		if (t) {
-			run_single_test(t, &passed, &failed);
-		} else {
-			fprintf(stderr, "%s: test not found\n", argv[1]);
-			return 1;
-		}
-	} else {
-		run_all_tests(&passed, &failed);
-	}
 	if (failed == 0) {
 		cprintf(ANSI_GREEN, "[  PASSED  ] %d test%s\n", passed,
 			passed == 1 ? "" : "s");
@@ -113,6 +87,39 @@ int test_main(int argc, char **argv)
 		cprintf(ANSI_RED, "[   FAIL   ] %d test%s\n", failed,
 			failed == 1 ? "" : "s");
 	}
+}
+
+static void list_all_tests()
+{
+	const struct test *t;
+
+	for (t = &__start_test_section; t < &__stop_test_section; t++) {
+		printf("%s/%s\n", t->category, t->name);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int passed = 0, failed = 0;
+	char *category = NULL, *name = NULL;
+
+	if (argc > 1 && !strcmp(argv[1], "--list")) {
+		list_all_tests();
+		return 0;
+	}
+
+	if (argc > 1) {
+		category = argv[1];
+		name = strchr(category, '/');
+		if (name) {
+			*name++ = '\0';
+			if (strlen(name) == 0)
+				name = NULL;
+		}
+	}
+
+	run_all_tests(category, name, &passed, &failed);
+	print_results(passed, failed);
 
 	return failed;
 }

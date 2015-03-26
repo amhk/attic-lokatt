@@ -1,6 +1,0 @@
-#!/bin/bash
-
-while true; do
-	fortune -s | tr '\n' ' ' | sed 's/[ ]*$/\n/'
-	sleep $(echo "scale=10; ${RANDOM} / 50000" | bc)
-done

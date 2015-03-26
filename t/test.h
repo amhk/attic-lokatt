@@ -1,5 +1,25 @@
-#ifndef LOKATT_ERROR_H
-#define LOKATT_ERROR_H
+#ifndef TEST_TEST_H
+#define TEST_TEST_H
+#include "liblokatt/error.h"
+
+/* inspired by the tests in the Wayland project */
+
+struct test {
+	const char *category;
+	const char *name;
+	void (*func)(void);
+};
+
+#define TEST(category, name) \
+	static void lokatt_test_##category_##name(void); \
+	const struct test test_##category_##name \
+		__attribute__((section ("test_section"))) = \
+	{ \
+		#category, #name, lokatt_test_##category_##name \
+	}; \
+	static void lokatt_test_##category_##name()
+
+#define EXIT_SKIPPED 127
 
 #define ASSERT_EQ(expr, value) do { \
 	if ((expr) != (value)) \
@@ -30,14 +50,5 @@
 	if ((expr) > (value)) \
 		die("assertion '%s' <= '%s' failed", #expr, #value); \
 } while (0)
-
-#define die(fmt, ...) \
-	do { \
-		__die(__FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__); \
-	} while (0)
-
-void __die(const char *file, unsigned int line, const char *func,
-	   const char *fmt, ...) \
-	     __attribute__((__noreturn__, __format__(__printf__, 4, 5)));
 
 #endif
