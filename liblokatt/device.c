@@ -27,7 +27,7 @@ static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 static void logcat_thread_sighandler(int signum)
 {
-	printf("thread got signal %d\n", signum);
+	(void)signum;
 	pthread_setspecific(key, (void *)1);
 }
 
@@ -57,7 +57,6 @@ static void *logcat_thread_main(void *arg)
 		pthread_mutex_unlock(&dev->mutex);
 		pthread_rwlock_unlock(&dev->lock);
 	}
-	printf("logcat_thread_main about to return\n");
 	return NULL;
 }
 
