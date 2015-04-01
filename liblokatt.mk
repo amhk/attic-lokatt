@@ -7,6 +7,7 @@ local_objects += device.o
 local_objects += dummy-backend.o
 local_objects += error.o
 local_objects += index.o
+local_objects += stack.o
 local_objects += strbuf.o
 
 include common.mk
