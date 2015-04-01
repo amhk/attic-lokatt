@@ -140,15 +140,23 @@ uint64_t lokatt_next_event(struct lokatt_device *dev,
 
 	while (!event) {
 		pthread_rwlock_rdlock(&dev->lock);
-		event = index_get(&dev->index, id++);
-		if (event && !(event->type & event_filter_bitmask))
-			event = NULL;
-		if (!event) {
-			pthread_mutex_lock(&dev->mutex);
-			pthread_rwlock_unlock(&dev->lock);
-			pthread_cond_wait(&dev->cond, &dev->mutex);
-			pthread_mutex_unlock(&dev->mutex);
+		event = index_get(&dev->index, id);
+
+		/* found matching event: we're done */
+		if (event && (event->type & event_filter_bitmask))
+			break;
+
+		/* found non-matching event: try next event */
+		if (event) {
+			id += 1;
+			continue;
 		}
+
+		/* at last event: wait for new event to arrive */
+		pthread_mutex_lock(&dev->mutex);
+		pthread_rwlock_unlock(&dev->lock);
+		pthread_cond_wait(&dev->cond, &dev->mutex);
+		pthread_mutex_unlock(&dev->mutex);
 	}
 	memcpy(out, event, sizeof(*out));
 	pthread_rwlock_unlock(&dev->lock);
