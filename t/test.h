@@ -11,13 +11,13 @@ struct test {
 };
 
 #define TEST(category, name) \
-	static void lokatt_test_##category_##name(void); \
-	const struct test test_##category_##name \
+	static void lokatt_test_##category##name(void); \
+	const struct test test_##category##name \
 		__attribute__((section ("test_section"))) = \
 	{ \
-		#category, #name, lokatt_test_##category_##name \
+		#category, #name, lokatt_test_##category##name \
 	}; \
-	static void lokatt_test_##category_##name()
+	static void lokatt_test_##category##name()
 
 #define EXIT_SKIPPED 127
 
