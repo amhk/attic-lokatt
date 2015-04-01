@@ -32,7 +32,7 @@ static void run_single_test(const struct test *t, int *passed, int *failed)
 	siginfo_t info;
 	pid_t pid;
 
-	cprintf(ANSI_RESET, "[ RUN      ] %s/%s\n", t->category, t->name);
+	cprintf(ANSI_RESET, "[ RUN      ] %s/%s\n", t->namespace, t->name);
 	pid = fork();
 	switch (pid) {
 		case -1:
@@ -49,18 +49,19 @@ static void run_single_test(const struct test *t, int *passed, int *failed)
 	if (info.si_code == CLD_EXITED && info.si_status == EXIT_SUCCESS) {
 		(*passed)++;
 		cprintf(ANSI_RESET, "[       OK ] %s/%s\n",
-			t->category, t->name);
+			t->namespace, t->name);
 	} else if (info.si_code == CLD_EXITED &&
 		   info.si_status == EXIT_SKIPPED) {
 		cprintf(ANSI_YELLOW, "[  SKIPPED ] %s/%s\n",
-			t->category, t->name);
+			t->namespace, t->name);
 	} else {
 		(*failed)++;
-		cprintf(ANSI_RED, "[     FAIL ] %s/%s\n", t->category, t->name);
+		cprintf(ANSI_RED, "[     FAIL ] %s/%s\n",
+			t->namespace, t->name);
 	}
 }
 
-static void run_all_tests(const char *category, const char *name,
+static void run_all_tests(const char *namespace, const char *name,
 			  int *passed, int *failed)
 {
 	const struct test *t;
@@ -68,9 +69,9 @@ static void run_all_tests(const char *category, const char *name,
 	for (t = &__start_test_section; t < &__stop_test_section; t++) {
 		int run = 0;
 
-		if (!category)
+		if (!namespace)
 			run = 1;
-		else if (!strcmp(category, t->category))
+		else if (!strcmp(namespace, t->namespace))
 			run = !name || !strcmp(name, t->name);
 
 		if (run)
@@ -94,14 +95,14 @@ static void list_all_tests()
 	const struct test *t;
 
 	for (t = &__start_test_section; t < &__stop_test_section; t++) {
-		printf("%s/%s\n", t->category, t->name);
+		printf("%s/%s\n", t->namespace, t->name);
 	}
 }
 
 int main(int argc, char **argv)
 {
 	int passed = 0, failed = 0;
-	char *category = NULL, *name = NULL;
+	char *namespace = NULL, *name = NULL;
 
 	if (argc > 1 && !strcmp(argv[1], "--list")) {
 		list_all_tests();
@@ -109,8 +110,8 @@ int main(int argc, char **argv)
 	}
 
 	if (argc > 1) {
-		category = argv[1];
-		name = strchr(category, '/');
+		namespace = argv[1];
+		name = strchr(namespace, '/');
 		if (name) {
 			*name++ = '\0';
 			if (strlen(name) == 0)
@@ -118,7 +119,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	run_all_tests(category, name, &passed, &failed);
+	run_all_tests(namespace, name, &passed, &failed);
 	print_results(passed, failed);
 
 	return failed;
