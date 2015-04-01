@@ -2,9 +2,26 @@
 #define LIBLOKATT_LOKATT_H
 #include <stdint.h>
 
+enum {
+	LEVEL_VERBOSE = 2,
+	LEVEL_DEBUG,
+	LEVEL_INFO,
+	LEVEL_WARNING,
+	LEVEL_ERROR,
+	LEVEL_ASSERT,
+};
+
+#define MSG_MAX_PAYLOAD_SIZE (4 * 1024)
+
 struct lokatt_message {
-	uint32_t pid;
-	char text[128];
+	int32_t pid;
+	int32_t tid;
+	int32_t sec;
+	int32_t nsec;
+	uint8_t level;
+	const char *tag;
+	const char *text;
+	char payload[MSG_MAX_PAYLOAD_SIZE];
 };
 
 #define EVENT_DEVICE_DISCONNECTED (1<<0)

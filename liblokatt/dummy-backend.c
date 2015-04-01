@@ -66,8 +66,10 @@ static int next_logcat_message(void *userdata, struct lokatt_message *out)
 	} while (i == *prev);
 	*prev = i;
 
-	strncpy(out->text, fortunes[i], 128);
+	strncpy(out->payload, fortunes[i], 128);
 	out->pid = i / 2 + 1;
+	out->tag = NULL;
+	out->text = out->payload;
 	return 0;
 }
 

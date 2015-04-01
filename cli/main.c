@@ -19,8 +19,9 @@ int main(int argc, char **argv)
 	for (int i = 0; i < 10000; i++) {
 		lokatt_next_event(dev, id, EVENT_LOGCAT_MESSAGE, &event);
 		id = event.id + 1;
-		fprintf(stdout, "id=%" PRIu64 " type=%d text='%s'\n",
-			event.id, event.type, event.msg.text);
+		fprintf(stdout, "pid=%-4" PRIu32 " tid=%-4" PRIu32 " tag='%s' text='%s'\n",
+			event.msg.pid, event.msg.tid, event.msg.tag,
+			event.msg.text);
 		fflush(stdout);
 	}
 
