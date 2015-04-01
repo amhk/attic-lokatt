@@ -25,6 +25,9 @@ LN := clang
 LNFLAGS := $(CFLAGS) -pthread
 LIBS :=
 
+LEX := flex
+LEXFLAGS :=
+
 ifdef local_shared_libraries
 LNFLAGS += $(foreach lib,$(local_shared_libraries),-Lout/$(lib))
 LIBS += $(foreach lib,$(local_shared_libraries:lib%=%),-l$(lib))
@@ -35,13 +38,21 @@ ifndef V
 	QUIET_DEP = @echo "    DEP $@";
 	QUIET_LN = @echo "    LINK $@";
 	QUIET_MKDIR = @echo "    MKDIR $@";
+	QUIET_LEX = @echo "    LEX $@";
 endif
 
 $(out):
 	$(QUIET_MKDIR)mkdir -p $@
 
+.PRECIOUS: $(out)/%.h $(out)/%.c
+$(out)/%.h $(out)/%.c: $(local_prefix)/%.lex | $(out)
+	$(QUIET_LEX)$(LEX) $(LEXFLAGS) $<
+
 $(out)/%.d: $(local_prefix)/%.c | $(out)
 	$(QUIET_DEP)$(CC) $(CFLAGS) -MM -MG $< | sed "s+.*:+$@ $@:+" | sed 's+\.d+.o+' >$@
+
+$(out)/%.o: $(out)/%.c | $(out)
+	$(QUIET_CC)$(CC) $(CFLAGS) -c -o $@ $<
 
 $(out)/%.o: $(local_prefix)/%.c | $(out)
 	$(QUIET_CC)$(CC) $(CFLAGS) -c -o $@ $<

@@ -3,6 +3,7 @@ local_prefix := t
 local_executable := test-lokatt
 
 local_objects += main.o
+local_objects += test-filter.o
 local_objects += test-stack.o
 local_objects += test-strbuf.o
 
