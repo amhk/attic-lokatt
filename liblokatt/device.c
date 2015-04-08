@@ -10,6 +10,21 @@
 #include "index.h"
 #include "lokatt.h"
 
+#define decode_logcat_payload(payload_ptr, level_ptr, tag_ptr, text_ptr) \
+	do { \
+		char *p; \
+		\
+		*(level_ptr) = (uint8_t)(((const char *)(payload_ptr))[0]); \
+		(tag_ptr) = (const char *)(((const char *)(payload_ptr)) + 1); \
+		(text_ptr) = (const char *)(strchr((tag_ptr), '\0') + 1); \
+		\
+		/* also strip trailing newlines from text */ \
+		p = strchr(text_ptr, '\0') - 1; \
+		while (*p == '\n') { \
+			*p-- = '\0'; \
+		} \
+	} while (0)
+
 struct lokatt_device {
 	void *backend;
 	struct backend_ops *ops;
@@ -27,7 +42,7 @@ static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 static void logcat_thread_sighandler(int signum)
 {
-	printf("thread got signal %d\n", signum);
+	(void)signum;
 	pthread_setspecific(key, (void *)1);
 }
 
@@ -57,7 +72,6 @@ static void *logcat_thread_main(void *arg)
 		pthread_mutex_unlock(&dev->mutex);
 		pthread_rwlock_unlock(&dev->lock);
 	}
-	printf("logcat_thread_main about to return\n");
 	return NULL;
 }
 
@@ -141,18 +155,29 @@ uint64_t lokatt_next_event(struct lokatt_device *dev,
 
 	while (!event) {
 		pthread_rwlock_rdlock(&dev->lock);
-		event = index_get(&dev->index, id++);
-		if (event && !(event->type & event_filter_bitmask))
-			event = NULL;
-		if (!event) {
-			pthread_mutex_lock(&dev->mutex);
-			pthread_rwlock_unlock(&dev->lock);
-			pthread_cond_wait(&dev->cond, &dev->mutex);
-			pthread_mutex_unlock(&dev->mutex);
+		event = index_get(&dev->index, id);
+
+		/* found matching event: we're done */
+		if (event && (event->type & event_filter_bitmask))
+			break;
+
+		/* found non-matching event: try next event */
+		if (event) {
+			id += 1;
+			continue;
 		}
+
+		/* at last event: wait for new event to arrive */
+		pthread_mutex_lock(&dev->mutex);
+		pthread_rwlock_unlock(&dev->lock);
+		pthread_cond_wait(&dev->cond, &dev->mutex);
+		pthread_mutex_unlock(&dev->mutex);
 	}
 	memcpy(out, event, sizeof(*out));
 	pthread_rwlock_unlock(&dev->lock);
+	if (event->type == EVENT_LOGCAT_MESSAGE)
+		decode_logcat_payload(out->msg.payload, &out->msg.level,
+				      out->msg.tag, out->msg.text);
 
 	return 0;
 }

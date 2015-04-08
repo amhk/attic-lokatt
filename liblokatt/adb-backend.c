@@ -24,21 +24,6 @@ struct logger_entry {
 	char msg[0];
 } __attribute__((__packed__));
 
-#define decode_logcat_payload(payload_ptr, level_ptr, tag_ptr, text_ptr) \
-	do { \
-		char *p; \
-		\
-		*(level_ptr) = (uint8_t)(((const char *)(payload_ptr))[0]); \
-		(tag_ptr) = (const char *)(((const char *)(payload_ptr)) + 1); \
-		(text_ptr) = (const char *)(strchr((tag_ptr), '\0') + 1); \
-		\
-		/* also strip trailing newlines from text */ \
-		p = strchr(text_ptr, '\0') - 1; \
-		while (*p == '\n') { \
-			*p-- = '\0'; \
-		} \
-	} while (0)
-
 #define TEMP_FAILURE_RETRY(exp) \
 	({ \
 	 typeof (exp) _rc; \
@@ -141,14 +126,15 @@ static int next_logcat_message(void *userdata, struct lokatt_message *out)
 	struct self *self = userdata;
 	ssize_t r;
 	uint32_t skip;
-	char buf[4 * 1024];
-
-	uint8_t level;
-	const char *tag, *text;
 
 	r = xread(self->adb.stdout[R], &header, sizeof(header));
 	if (r != sizeof(header))
 		return -1;
+
+	out->pid = header.pid;
+	out->tid = header.tid;
+	out->sec = header.sec;
+	out->nsec = header.sec;
 
 	/*
 	 * Try to guess if we're reading v2 or v3 headers by looking at the
@@ -159,15 +145,9 @@ static int next_logcat_message(void *userdata, struct lokatt_message *out)
 	if (header.__pad != 0)
 		xread(self->adb.stdout[R], (char *)&skip, sizeof(skip));
 
-	r = xread(self->adb.stdout[R], buf, header.len);
+	r = xread(self->adb.stdout[R], out->payload, header.len);
 	if (r != header.len)
 		return -1;
-
-	decode_logcat_payload(buf, &level, tag, text);
-
-	out->pid = header.pid;
-	strncpy(out->text, text, 128);
-	out->text[127] = '\0';
 
 	return 0;
 }

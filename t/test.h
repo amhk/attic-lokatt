@@ -5,19 +5,19 @@
 /* inspired by the tests in the Wayland project */
 
 struct test {
-	const char *category;
+	const char *namespace;
 	const char *name;
 	void (*func)(void);
 };
 
-#define TEST(category, name) \
-	static void lokatt_test_##category_##name(void); \
-	const struct test test_##category_##name \
+#define TEST(namespace, name) \
+	static void lokatt_test_##namespace##name(void); \
+	const struct test test_##namespace##name \
 		__attribute__((section ("test_section"))) = \
 	{ \
-		#category, #name, lokatt_test_##category_##name \
+		#namespace, #name, lokatt_test_##namespace##name \
 	}; \
-	static void lokatt_test_##category_##name()
+	static void lokatt_test_##namespace##name()
 
 #define EXIT_SKIPPED 127
 
