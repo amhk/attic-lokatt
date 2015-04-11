@@ -23,6 +23,9 @@ void index_append(struct index *idx, const struct lokatt_event *event)
 {
 	struct lokatt_event *copy = malloc(sizeof(*copy));
 	memcpy(copy, event, sizeof(*copy));
+	if (copy->type & EVENT_LOGCAT_MESSAGE)
+		decode_logcat_payload(copy->msg.payload, &copy->msg.level,
+				      copy->msg.tag, copy->msg.text);
 	if (idx->current_size == idx->max_size) {
 		idx->max_size += 1024;
 		idx->arena = realloc(idx->arena, idx->max_size *
