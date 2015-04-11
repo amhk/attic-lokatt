@@ -306,10 +306,10 @@ static int get_string(const struct token *t, const struct lokatt_message *msg,
 {
 	switch (t->type) {
 	case TOKEN_KEY_TAG:
-		*out = msg->tag;
+		*out = msg->tag ? msg->tag : "";
 		return 0;
 	case TOKEN_KEY_TEXT:
-		*out = msg->text;
+		*out = msg->text ? msg->text : "";
 		return 0;
 	default:
 		return -1;
