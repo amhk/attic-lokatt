@@ -13,9 +13,10 @@ int main(int argc, char **argv)
 	const char *filter_spec = NULL;
 	uint64_t id = 0;
 
-	if (argc > 1 && !strcmp(argv[1], "--dummy"))
-		dev = lokatt_open_dummy_device();
-	else if (argc > 1 && !strcmp(argv[1], "--file")) {
+	if (argc > 1 && !strcmp(argv[1], "--dummy")) {
+		if (argc > 2)
+			dev = lokatt_open_dummy_device(argv[2]);
+	} else if (argc > 1 && !strcmp(argv[1], "--file")) {
 		if (argc > 2)
 			dev = lokatt_open_file(argv[2]);
 	} else {

@@ -97,10 +97,10 @@ struct lokatt_device *lokatt_open_adb_device(const char *serialno)
 	return dev;
 }
 
-struct lokatt_device *lokatt_open_dummy_device()
+struct lokatt_device *lokatt_open_dummy_device(const char *path)
 {
 	struct lokatt_device *dev;
-	void *backend = create_dummy_backend();
+	void *backend = create_dummy_backend(path);
 	if (!backend)
 		return NULL;
 	dev = create_device(backend, &dummy_backend_ops);

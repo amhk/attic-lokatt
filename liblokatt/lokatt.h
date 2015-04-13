@@ -42,7 +42,7 @@ struct lokatt_event {
 
 struct lokatt_device;
 struct lokatt_device *lokatt_open_adb_device(const char *serialno);
-struct lokatt_device *lokatt_open_dummy_device();
+struct lokatt_device *lokatt_open_dummy_device(const char *path);
 struct lokatt_device *lokatt_open_file(const char *path);
 void lokatt_close_device(struct lokatt_device *);
 
