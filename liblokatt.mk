@@ -7,6 +7,7 @@ local_objects += adb.o
 local_objects += device.o
 local_objects += dummy-backend.o
 local_objects += error.o
+local_objects += file-backend.o
 local_objects += filter-lexer.o
 local_objects += filter.o
 local_objects += index.o
