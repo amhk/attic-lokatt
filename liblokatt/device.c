@@ -97,10 +97,10 @@ struct lokatt_device *lokatt_open_adb_device(const char *serialno)
 	return dev;
 }
 
-struct lokatt_device *lokatt_open_dummy_device()
+struct lokatt_device *lokatt_open_dummy_device(const char *path)
 {
 	struct lokatt_device *dev;
-	void *backend = create_dummy_backend();
+	void *backend = create_dummy_backend(path);
 	if (!backend)
 		return NULL;
 	dev = create_device(backend, &dummy_backend_ops);
@@ -112,9 +112,15 @@ struct lokatt_device *lokatt_open_dummy_device()
 
 struct lokatt_device *lokatt_open_file(const char *path)
 {
-	/* TODO: implement this */
-	(void)path;
-	return NULL;
+	struct lokatt_device *dev;
+	void *backend = create_file_backend(path);
+	if (!backend)
+		return NULL;
+	dev = create_device(backend, &file_backend_ops);
+	if (!dev) {
+		file_backend_ops.destroy(backend);
+	}
+	return dev;
 }
 
 void lokatt_close_device(struct lokatt_device *dev)

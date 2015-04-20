@@ -10,10 +10,13 @@ struct backend_ops {
 	int (*pid_to_name)(void *userdata, uint32_t pid, char out[128]);
 };
 
-extern void *create_dummy_backend();
+extern void *create_dummy_backend(const char *path);
 extern struct backend_ops dummy_backend_ops;
 
 extern void *create_adb_backend(const char *serialno);
 extern struct backend_ops adb_backend_ops;
+
+extern void *create_file_backend(const char *path);
+extern struct backend_ops file_backend_ops;
 
 #endif

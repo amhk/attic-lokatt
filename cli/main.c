@@ -7,18 +7,27 @@
 
 int main(int argc, char **argv)
 {
-	struct lokatt_device *dev;
+	struct lokatt_device *dev = NULL;
 	struct lokatt_event event;
 	struct lokatt_filter *filter;
 	const char *filter_spec = NULL;
 	uint64_t id = 0;
 
-	if (argc > 1 && !strcmp(argv[1], "--dummy"))
-		dev = lokatt_open_dummy_device();
-	else {
+	if (argc > 1 && !strcmp(argv[1], "--dummy")) {
+		if (argc > 2)
+			dev = lokatt_open_dummy_device(argv[2]);
+	} else if (argc > 1 && !strcmp(argv[1], "--file")) {
+		if (argc > 2)
+			dev = lokatt_open_file(argv[2]);
+	} else {
 		dev = lokatt_open_adb_device("some-serial-number");
 		if (argc > 1)
 			filter_spec = argv[1];
+	}
+
+	if (!dev) {
+		fprintf(stdout, "failed to open device\n");
+		return 1;
 	}
 
 	filter = lokatt_create_filter(EVENT_LOGCAT_MESSAGE, filter_spec);
