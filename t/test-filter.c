@@ -426,99 +426,103 @@ TEST(filter, rpn_invalid_input)
 	filter_free_tokens(tokens, count);
 }
 
-int oneshot(const char *spec, const struct lokatt_message *msg)
+int oneshot(const char *spec, const struct lokatt_event *event)
 {
 	int retval;
-	struct filter *f;
+	struct lokatt_filter *f;
 
-	f = filter_create(spec);
+	f = lokatt_create_filter(EVENT_ANY, spec);
 	ASSERT_NE(f, NULL);
-	retval = filter_match(f, msg);
-	filter_destroy(f);
+	retval = lokatt_filter_match(f, event);
+	lokatt_destroy_filter(f);
 
 	return retval;
 }
 
 TEST(filter, valid_input)
 {
-	const struct lokatt_message msg = {
-		.pid = 1,
-		.tid = 2,
-		.sec = 3,
-		.nsec = 4,
-		.level = LEVEL_WARNING,
-		.tag = "PackageManagerService",
-		.text = "This is the text.",
+	const struct lokatt_event event  = {
+		.type = EVENT_LOGCAT_MESSAGE,
+		.id = 0,
+		.msg = {
+			.pid = 1,
+			.tid = 2,
+			.sec = 3,
+			.nsec = 4,
+			.level = LEVEL_WARNING,
+			.tag = "PackageManagerService",
+			.text = "This is the text.",
+		},
 	};
 	const char *str;
 
 	/* integer values */
-	ASSERT_EQ(oneshot("pid == 1", &msg), 0);
-	ASSERT_EQ(oneshot("tid == 2", &msg), 0);
-	ASSERT_EQ(oneshot("sec == 3", &msg), 0);
-	ASSERT_EQ(oneshot("nsec == 4", &msg), 0);
-	ASSERT_EQ(oneshot("level == 5", &msg), 0);
+	ASSERT_NE(oneshot("pid == 1", &event), 0);
+	ASSERT_NE(oneshot("tid == 2", &event), 0);
+	ASSERT_NE(oneshot("sec == 3", &event), 0);
+	ASSERT_NE(oneshot("nsec == 4", &event), 0);
+	ASSERT_NE(oneshot("level == 5", &event), 0);
 
 	/* string values */
-	ASSERT_EQ(oneshot("tag == \"PackageManagerService\"", &msg), 0);
-	ASSERT_EQ(oneshot("text == \"This is the text.\"", &msg), 0);
+	ASSERT_NE(oneshot("tag == \"PackageManagerService\"", &event), 0);
+	ASSERT_NE(oneshot("text == \"This is the text.\"", &event), 0);
 
 	/* integer operations */
-	ASSERT_EQ(oneshot("pid == 1", &msg), 0);
-	ASSERT_GT(oneshot("pid == 10", &msg), 0);
+	ASSERT_NE(oneshot("pid == 1", &event), 0);
+	ASSERT_EQ(oneshot("pid == 10", &event), 0);
 
-	ASSERT_EQ(oneshot("pid != 0", &msg), 0);
-	ASSERT_GT(oneshot("pid != 1", &msg), 0);
+	ASSERT_NE(oneshot("pid != 0", &event), 0);
+	ASSERT_EQ(oneshot("pid != 1", &event), 0);
 
-	ASSERT_EQ(oneshot("pid < 2", &msg), 0);
-	ASSERT_GT(oneshot("pid < 1", &msg), 0);
+	ASSERT_NE(oneshot("pid < 2", &event), 0);
+	ASSERT_EQ(oneshot("pid < 1", &event), 0);
 
-	ASSERT_EQ(oneshot("pid <= 2", &msg), 0);
-	ASSERT_EQ(oneshot("pid <= 1", &msg), 0);
-	ASSERT_GT(oneshot("pid <= 0", &msg), 0);
+	ASSERT_NE(oneshot("pid <= 2", &event), 0);
+	ASSERT_NE(oneshot("pid <= 1", &event), 0);
+	ASSERT_EQ(oneshot("pid <= 0", &event), 0);
 
-	ASSERT_EQ(oneshot("pid > 0", &msg), 0);
-	ASSERT_GT(oneshot("pid > 1", &msg), 0);
+	ASSERT_NE(oneshot("pid > 0", &event), 0);
+	ASSERT_EQ(oneshot("pid > 1", &event), 0);
 
-	ASSERT_EQ(oneshot("pid >= 0", &msg), 0);
-	ASSERT_EQ(oneshot("pid >= 1", &msg), 0);
-	ASSERT_GT(oneshot("pid >= 2", &msg), 0);
+	ASSERT_NE(oneshot("pid >= 0", &event), 0);
+	ASSERT_NE(oneshot("pid >= 1", &event), 0);
+	ASSERT_EQ(oneshot("pid >= 2", &event), 0);
 
 	/* string operations */
-	ASSERT_EQ(oneshot("tag == \"PackageManagerService\"", &msg), 0);
-	ASSERT_GT(oneshot("tag == \"foobar\"", &msg), 0);
+	ASSERT_NE(oneshot("tag == \"PackageManagerService\"", &event), 0);
+	ASSERT_EQ(oneshot("tag == \"foobar\"", &event), 0);
 
-	ASSERT_EQ(oneshot("tag != \"foobar\"", &msg), 0);
-	ASSERT_GT(oneshot("tag != \"PackageManagerService\"", &msg), 0);
+	ASSERT_NE(oneshot("tag != \"foobar\"", &event), 0);
+	ASSERT_EQ(oneshot("tag != \"PackageManagerService\"", &event), 0);
 
 	/* TODO: add tests for =~ and !~ */
 
 	/* logical operations */
 	str = "pid == 1 && tag == \"PackageManagerService\"";
-	ASSERT_EQ(oneshot(str, &msg), 0);
+	ASSERT_NE(oneshot(str, &event), 0);
 	str = "pid == 1 && tag == \"x\"";
-	ASSERT_NE(oneshot(str, &msg), 0);
+	ASSERT_EQ(oneshot(str, &event), 0);
 	str = "pid == 0 && tag == \"PackageManagerService\"";
-	ASSERT_NE(oneshot(str, &msg), 0);
+	ASSERT_EQ(oneshot(str, &event), 0);
 
 	str = "pid == 1 || tag == \"x\"";
-	ASSERT_EQ(oneshot(str, &msg), 0);
+	ASSERT_NE(oneshot(str, &event), 0);
 	str = "pid == 0 || tag == \"PackageManagerService\"";
-	ASSERT_EQ(oneshot(str, &msg), 0);
+	ASSERT_NE(oneshot(str, &event), 0);
 	str = "pid == 0 || tag == \"x\"";
-	ASSERT_NE(oneshot(str, &msg), 0);
+	ASSERT_EQ(oneshot(str, &event), 0);
 }
 
 TEST(filter, invalid_input)
 {
-	struct filter *f;
+	struct lokatt_filter *f;
 
-	f = filter_create("tag tag tag tag");
+	f = lokatt_create_filter(EVENT_ANY, "tag tag tag tag");
 	ASSERT_EQ(f, NULL);
 
-	f = filter_create("1234 == pid");
+	f = lokatt_create_filter(EVENT_ANY, "1234 == pid");
 	ASSERT_EQ(f, NULL);
 
-	f = filter_create("(pid == 1 || tid != 2 && sec < 3");
+	f = lokatt_create_filter(EVENT_ANY, "(pid == 1 || tid != 2 && sec < 3");
 	ASSERT_EQ(f, NULL);
 }

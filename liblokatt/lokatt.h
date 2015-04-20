@@ -46,13 +46,22 @@ struct lokatt_device *lokatt_open_dummy_device();
 struct lokatt_device *lokatt_open_file(const char *path);
 void lokatt_close_device(struct lokatt_device *);
 
+struct lokatt_filter;
+struct lokatt_filter *lokatt_create_filter(unsigned int event_bitmask,
+					   const char *msg_spec);
+void lokatt_destroy_filter(struct lokatt_filter *f);
+
+/* returns non-zero on match */
+int lokatt_filter_match(const struct lokatt_filter *f,
+			const struct lokatt_event *event);
+
 /*
  * Read the next event, as counted from event with id 'current_id', matching
  * the filter bitmask. Will block until a matching event becomes available.
  */
 uint64_t lokatt_next_event(struct lokatt_device *dev,
 			   uint64_t current_id,
-			   unsigned int event_filter_bitmask,
+			   const struct lokatt_filter *filter,
 			   struct lokatt_event *out);
 
 #endif

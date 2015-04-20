@@ -3,7 +3,7 @@
 
 #include "strbuf.h"
 
-struct filter;
+struct lokatt_filter;
 struct lokatt_message;
 
 struct token {
@@ -48,18 +48,13 @@ struct token {
 	};
 };
 
-struct filter *filter_create(const char *spec);
-void filter_destroy(struct filter *f);
-int filter_match(const struct filter *f, const struct lokatt_message *msg);
-
-/*
- * The following functions are exposed only for the sake of testability. Do not
- * call them directly except from test-filter.c.
- */
 int filter_tokenize(const char *input, struct token **out, size_t *out_size);
 void filter_free_tokens(struct token *tokens, size_t size);
 
 int filter_tokens_as_rpn(const struct token *tokens, size_t token_count,
 			 struct token ***out, size_t *out_size);
+
+int filter_match_message(const struct lokatt_filter *f,
+			 const struct lokatt_message *msg);
 
 #endif

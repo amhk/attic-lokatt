@@ -6,7 +6,9 @@
 #include "lokatt.h"
 #include "stack.h"
 
-struct filter {
+struct lokatt_filter {
+	unsigned int event_bitmask;
+
 	struct token *tokens;
 	size_t token_count;
 
@@ -240,7 +242,8 @@ int filter_tokens_as_rpn(const struct token *tokens, size_t token_count,
 	return retval;
 }
 
-struct filter *filter_create(const char *spec)
+struct lokatt_filter *lokatt_create_filter(unsigned int event_bitmask,
+					   const char *spec)
 {
 	static struct lokatt_message dummy_msg = {
 		.pid = 0,
@@ -251,26 +254,30 @@ struct filter *filter_create(const char *spec)
 		.tag = "",
 		.text = "",
 	};
-	struct filter *f = calloc(1, sizeof(*f));
+	struct lokatt_filter *f = calloc(1, sizeof(*f));
 
-	if (filter_tokenize(spec, &f->tokens, &f->token_count))
-		goto bail;
+	if (spec) {
+		if (filter_tokenize(spec, &f->tokens, &f->token_count))
+			goto bail;
 
-	if (filter_tokens_as_rpn(f->tokens, f->token_count, &f->rpn,
-				 &f->rpn_count))
-		goto bail;
+		if (filter_tokens_as_rpn(f->tokens, f->token_count, &f->rpn,
+					 &f->rpn_count))
+			goto bail;
 
-	/* check for syntax error, eg "tag == tag" */
-	if (filter_match(f, &dummy_msg) == -1)
-		goto bail;
+		/* check for syntax error, eg "tag == tag" */
+		if (filter_match_message(f, &dummy_msg) == -1)
+			goto bail;
+	}
+
+	f->event_bitmask = event_bitmask;
 
 	return f;
 bail:
-	filter_destroy(f);
+	lokatt_destroy_filter(f);
 	return NULL;
 }
 
-void filter_destroy(struct filter *f)
+void lokatt_destroy_filter(struct lokatt_filter *f)
 {
 	free(f->rpn);
 	filter_free_tokens(f->tokens, f->token_count);
@@ -306,10 +313,10 @@ static int get_string(const struct token *t, const struct lokatt_message *msg,
 {
 	switch (t->type) {
 	case TOKEN_KEY_TAG:
-		*out = msg->tag;
+		*out = msg->tag ? msg->tag : "";
 		return 0;
 	case TOKEN_KEY_TEXT:
-		*out = msg->text;
+		*out = msg->text ? msg->text : "";
 		return 0;
 	default:
 		return -1;
@@ -364,7 +371,8 @@ static int evaluate_lt(const struct token *left,
  *   - '> 0': no match
  *   - '< 0': internal error
  */
-int filter_match(const struct filter *f, const struct lokatt_message *msg)
+int filter_match_message(const struct lokatt_filter *f,
+			 const struct lokatt_message *msg)
 {
 	static const struct token TRUE = {
 		.type = TOKEN_TRUE,
@@ -466,4 +474,14 @@ int filter_match(const struct filter *f, const struct lokatt_message *msg)
 bail:
 	stack_destroy(&stack);
 	return retval;
+}
+
+int lokatt_filter_match(const struct lokatt_filter *f,
+			const struct lokatt_event *event)
+{
+	if (!(f->event_bitmask & event->type))
+		return 0;
+	if ((event->type & EVENT_LOGCAT_MESSAGE) && f->token_count)
+		return filter_match_message(f, &event->msg) == 0;
+	return 1;
 }

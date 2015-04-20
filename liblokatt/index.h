@@ -3,6 +3,21 @@
 
 #include <stdint.h>
 
+#define decode_logcat_payload(payload_ptr, level_ptr, tag_ptr, text_ptr) \
+	do { \
+		char *p; \
+		\
+		*(level_ptr) = (uint8_t)(((const char *)(payload_ptr))[0]); \
+		(tag_ptr) = (const char *)(((const char *)(payload_ptr)) + 1); \
+		(text_ptr) = (const char *)(strchr((tag_ptr), '\0') + 1); \
+		\
+		/* also strip trailing newlines from text */ \
+		p = strchr(text_ptr, '\0') - 1; \
+		while (*p == '\n') { \
+			*p-- = '\0'; \
+		} \
+	} while (0)
+
 struct lokatt_event;
 
 struct index {

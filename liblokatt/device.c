@@ -10,21 +10,6 @@
 #include "index.h"
 #include "lokatt.h"
 
-#define decode_logcat_payload(payload_ptr, level_ptr, tag_ptr, text_ptr) \
-	do { \
-		char *p; \
-		\
-		*(level_ptr) = (uint8_t)(((const char *)(payload_ptr))[0]); \
-		(tag_ptr) = (const char *)(((const char *)(payload_ptr)) + 1); \
-		(text_ptr) = (const char *)(strchr((tag_ptr), '\0') + 1); \
-		\
-		/* also strip trailing newlines from text */ \
-		p = strchr(text_ptr, '\0') - 1; \
-		while (*p == '\n') { \
-			*p-- = '\0'; \
-		} \
-	} while (0)
-
 struct lokatt_device {
 	void *backend;
 	struct backend_ops *ops;
@@ -147,22 +132,22 @@ void lokatt_close_device(struct lokatt_device *dev)
 
 uint64_t lokatt_next_event(struct lokatt_device *dev,
 			   uint64_t id,
-			   unsigned int event_filter_bitmask,
+			   const struct lokatt_filter *filter,
 			   struct lokatt_event *out)
 {
-	(void)event_filter_bitmask;
 	const struct lokatt_event *event = NULL;
 
-	while (!event) {
+	for (;;) {
 		pthread_rwlock_rdlock(&dev->lock);
 		event = index_get(&dev->index, id);
 
 		/* found matching event: we're done */
-		if (event && (event->type & event_filter_bitmask))
+		if (event && lokatt_filter_match(filter, event))
 			break;
 
 		/* found non-matching event: try next event */
 		if (event) {
+			pthread_rwlock_unlock(&dev->lock);
 			id += 1;
 			continue;
 		}
